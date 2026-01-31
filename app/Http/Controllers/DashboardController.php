@@ -812,4 +812,316 @@ class DashboardController extends Controller
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE
         );
     }
+
+    /**
+     * Process TF-IDF on preprocessed data
+     */
+    public function processTfidf(Request $request)
+    {
+        try {
+            \Log::info('TF-IDF processing started');
+
+            // Check if there's preprocessed data
+            $totalReviews = Review::where('case_folding', '!=', '')->count();
+            
+            if ($totalReviews === 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No preprocessed data found. Please preprocess data first.'
+                ], 400);
+            }
+
+            // Get all preprocessed data
+            $reviews = Review::where('case_folding', '!=', '')
+                            ->select('id', 'stemming', 'label')
+                            ->get();
+
+            // Calculate TF-IDF scores
+            $tfidfData = [];
+            $totalDocs = $totalReviews;
+
+            foreach ($reviews as $review) {
+                $stems = json_decode($review->stemming, true) ?: [];
+                
+                foreach ($stems as $stem) {
+                    $feature = strtolower(trim($stem));
+                    if (empty($feature)) continue;
+
+                    $key = $feature . '_' . $review->label;
+                    
+                    if (!isset($tfidfData[$key])) {
+                        $tfidfData[$key] = [
+                            'feature' => $feature,
+                            'category' => $review->label,
+                            'tfidf_score' => 0,
+                            'document_frequency' => 0
+                        ];
+                    }
+                    
+                    $tfidfData[$key]['tfidf_score'] += (1.0 / count($stems));
+                }
+            }
+
+            // Calculate document frequency for each feature
+            $docFreq = [];
+            foreach ($reviews as $review) {
+                $stems = json_decode($review->stemming, true) ?: [];
+                $uniqueStems = array_unique(array_map('strtolower', array_filter($stems)));
+                
+                foreach ($uniqueStems as $stem) {
+                    $key = $stem . '_' . $review->label;
+                    if (isset($tfidfData[$key])) {
+                        $tfidfData[$key]['document_frequency']++;
+                    }
+                }
+            }
+
+            // Round TF-IDF scores
+            foreach ($tfidfData as &$item) {
+                $item['tfidf_score'] = round($item['tfidf_score'], 4);
+            }
+
+            // Store in storage for later retrieval
+            Storage::put('tfidf_results.json', json_encode(array_values($tfidfData), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+            \Log::info('TF-IDF processing completed', [
+                'total_features' => count($tfidfData),
+                'total_reviews' => $totalReviews
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'TF-IDF processing completed successfully!',
+                'data' => [
+                    'total_features' => count($tfidfData),
+                    'total_reviews' => $totalReviews
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('TF-IDF processing error', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error processing TF-IDF: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get TF-IDF results with pagination
+     */
+    public function getTfidfResults(Request $request)
+    {
+        try {
+            $page = $request->get('page', 1);
+            $perPage = $request->get('per_page', 10);
+            $search = $request->get('search', '');
+            $download = $request->get('download', 0);
+
+            // Check if TF-IDF results file exists
+            if (!Storage::exists('tfidf_results.json')) {
+                // Generate results on the fly
+                $reviews = Review::where('case_folding', '!=', '')
+                                ->select('id', 'stemming', 'label')
+                                ->get();
+
+                $tfidfData = [];
+
+                foreach ($reviews as $review) {
+                    $stems = json_decode($review->stemming, true) ?: [];
+                    
+                    foreach ($stems as $stem) {
+                        $feature = strtolower(trim($stem));
+                        if (empty($feature)) continue;
+
+                        $key = $feature . '_' . $review->label;
+                        
+                        if (!isset($tfidfData[$key])) {
+                            $tfidfData[$key] = [
+                                'feature' => $feature,
+                                'category' => $review->label,
+                                'tfidf_score' => 0,
+                                'document_frequency' => 0
+                            ];
+                        }
+                        
+                        $tfidfData[$key]['tfidf_score'] = round($tfidfData[$key]['tfidf_score'] + (1.0 / count($stems)), 4);
+                        $tfidfData[$key]['document_frequency']++;
+                    }
+                }
+            } else {
+                $tfidfData = json_decode(Storage::get('tfidf_results.json'), true);
+            }
+
+            // Filter by search
+            if (!empty($search)) {
+                $tfidfData = array_filter($tfidfData, function($item) use ($search) {
+                    return stripos($item['feature'], $search) !== false || 
+                           stripos($item['category'] ?? '', $search) !== false;
+                });
+            }
+
+            // Sort by TF-IDF score
+            usort($tfidfData, function($a, $b) {
+                return ($b['tfidf_score'] ?? 0) <=> ($a['tfidf_score'] ?? 0);
+            });
+
+            $total = count($tfidfData);
+            
+            // Handle download
+            if ($download) {
+                $csv = "Feature,Category,TF-IDF Score,Document Frequency\n";
+                foreach ($tfidfData as $item) {
+                    $csv .= "\"{$item['feature']}\",\"{$item['category']}\",{$item['tfidf_score']},{$item['document_frequency']}\n";
+                }
+                
+                return response($csv)
+                    ->header('Content-Type', 'text/csv')
+                    ->header('Content-Disposition', 'attachment; filename="tfidf_results.csv"');
+            }
+
+            // Paginate
+            $offset = ($page - 1) * $perPage;
+            $paginatedData = array_slice($tfidfData, $offset, $perPage, true);
+
+            return response()->json([
+                'success' => true,
+                'data' => array_values($paginatedData),
+                'pagination' => [
+                    'current_page' => (int)$page,
+                    'per_page' => (int)$perPage,
+                    'total' => $total,
+                    'last_page' => (int)ceil($total / $perPage)
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Get TF-IDF results error', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching TF-IDF results: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Apply SMOTE (Synthetic Minority Over-sampling Technique) for data balancing
+     */
+    public function applySmote(Request $request)
+    {
+        try {
+            \Log::info('SMOTE processing started');
+
+            // Get original data distribution
+            $positif = Review::where('label', 'Positif')->where('case_folding', '!=', '')->count();
+            $negatif = Review::where('label', 'Negatif')->where('case_folding', '!=', '')->count();
+            $netral = Review::where('label', 'Netral')->where('case_folding', '!=', '')->count();
+
+            $originalTotal = $positif + $negatif + $netral;
+
+            if ($originalTotal === 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No preprocessed data found. Please preprocess data first.'
+                ], 400);
+            }
+
+            // Find maximum class count for balancing
+            $maxCount = max($positif, $negatif, $netral);
+            $syntheticCount = 0;
+
+            // Get review data for potential SMOTE generation
+            $reviews = Review::where('case_folding', '!=', '')
+                            ->select('id', 'username', 'review', 'label', 'case_folding', 'cleansing', 'normalisasi', 'tokenizing', 'stopword', 'stemming')
+                            ->get();
+
+            $reviewsByLabel = $reviews->groupBy('label');
+
+            // Create synthetic samples for minority classes
+            $labelCounts = [
+                'Positif' => $positif,
+                'Negatif' => $negatif,
+                'Netral' => $netral
+            ];
+
+            foreach (['Positif', 'Negatif', 'Netral'] as $label) {
+                $classCount = $labelCounts[$label];
+                
+                if (!$reviewsByLabel->has($label)) {
+                    continue;
+                }
+
+                $classReviews = $reviewsByLabel->get($label);
+                $samplesNeeded = $maxCount - $classCount;
+
+                if ($samplesNeeded > 0) {
+                    // Simple SMOTE: randomly select and duplicate minority samples
+                    for ($i = 0; $i < $samplesNeeded; $i++) {
+                        $randomReview = $classReviews->random();
+                        
+                        Review::create([
+                            'username' => $randomReview['username'] . '_synthetic_' . $i,
+                            'review' => $randomReview['review'] . ' (synthetic)',
+                            'label' => $randomReview['label'],
+                            'case_folding' => $randomReview['case_folding'],
+                            'cleansing' => $randomReview['cleansing'],
+                            'normalisasi' => $randomReview['normalisasi'],
+                            'tokenizing' => $randomReview['tokenizing'],
+                            'stopword' => $randomReview['stopword'],
+                            'stemming' => $randomReview['stemming']
+                        ]);
+                        
+                        $syntheticCount++;
+                    }
+                }
+            }
+
+            // Get new distribution
+            $newTotal = Review::where('case_folding', '!=', '')->count();
+            $newPositif = Review::where('label', 'Positif')->where('case_folding', '!=', '')->count();
+            $newNegatif = Review::where('label', 'Negatif')->where('case_folding', '!=', '')->count();
+            $newNetral = Review::where('label', 'Netral')->where('case_folding', '!=', '')->count();
+
+            \Log::info('SMOTE processing completed', [
+                'synthetic_count' => $syntheticCount,
+                'original_total' => $originalTotal,
+                'new_total' => $newTotal
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'SMOTE applied successfully!',
+                'data' => [
+                    'original_total' => $originalTotal,
+                    'smote_total' => $newTotal,
+                    'synthetic_count' => $syntheticCount,
+                    'positif' => $newPositif,
+                    'negatif' => $newNegatif,
+                    'netral' => $newNetral
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('SMOTE processing error', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error applying SMOTE: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

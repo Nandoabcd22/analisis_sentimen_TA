@@ -111,6 +111,7 @@
         <ul class="navbar-menu">
             <li><a href="{{ route('dashboard') }}" class="@if(request()->routeIs('dashboard')) active @endif">Dashboard</a></li>
             <li><a href="{{ route('preprocessing') }}" class="@if(request()->routeIs('preprocessing')) active @endif">Preprocessing</a></li>
+            <li><a href="{{ route('tfidf') }}" class="@if(request()->routeIs('tfidf')) active @endif">TF-IDF</a></li>
             <li><a href="{{ route('klasifikasi') }}" class="@if(request()->routeIs('klasifikasi')) active @endif">Klasifikasi</a></li>
             <li><a href="{{ route('hasil-laporan') }}" class="@if(request()->routeIs('hasil-laporan')) active @endif">Hasil Dan Laporan</a></li>
         </ul>

@@ -111,6 +111,7 @@
         <ul class="navbar-menu">
             <li><a href="<?php echo e(route('dashboard')); ?>" class="<?php if(request()->routeIs('dashboard')): ?> active <?php endif; ?>">Dashboard</a></li>
             <li><a href="<?php echo e(route('preprocessing')); ?>" class="<?php if(request()->routeIs('preprocessing')): ?> active <?php endif; ?>">Preprocessing</a></li>
+            <li><a href="<?php echo e(route('tfidf')); ?>" class="<?php if(request()->routeIs('tfidf')): ?> active <?php endif; ?>">TF-IDF</a></li>
             <li><a href="<?php echo e(route('klasifikasi')); ?>" class="<?php if(request()->routeIs('klasifikasi')): ?> active <?php endif; ?>">Klasifikasi</a></li>
             <li><a href="<?php echo e(route('hasil-laporan')); ?>" class="<?php if(request()->routeIs('hasil-laporan')): ?> active <?php endif; ?>">Hasil Dan Laporan</a></li>
         </ul>

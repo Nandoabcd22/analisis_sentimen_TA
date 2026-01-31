@@ -13,6 +13,7 @@ Route::get('/get-reviews', [DashboardController::class, 'getReviews'])->name('ge
 Route::post('/preprocess-data', [DashboardController::class, 'preprocessData'])->name('preprocess.data');
 Route::get('/get-preprocessed-reviews', [DashboardController::class, 'getPreprocessedReviews'])->name('get.preprocessed.reviews');
 Route::get('/get-statistics', [DashboardController::class, 'getStatistics'])->name('get.statistics');
+Route::get('/api/statistics', [DashboardController::class, 'getStatistics'])->name('api.statistics');
 
 Route::get('/preprocessing', function () {
     return view('preprocessing');
@@ -26,3 +27,12 @@ Route::get('/klasifikasi', function () {
 Route::get('/hasil-laporan', function () {
     return view('hasil-laporan');
 })->name('hasil-laporan');
+
+Route::get('/tfidf', function () {
+    return view('tfidf');
+})->name('tfidf');
+
+// TF-IDF and Data Processing Routes
+Route::post('/process-tfidf', [DashboardController::class, 'processTfidf'])->name('process.tfidf');
+Route::post('/apply-smote', [DashboardController::class, 'applySmote'])->name('apply.smote');
+Route::get('/api/tfidf-results', [DashboardController::class, 'getTfidfResults'])->name('api.tfidf.results');

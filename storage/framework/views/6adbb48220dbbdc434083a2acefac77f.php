@@ -1,8 +1,6 @@
-@extends('layouts.app')
+<?php $__env->startSection('title', 'TF-IDF & Data Processing'); ?>
 
-@section('title', 'TF-IDF & Data Processing')
-
-@section('content')
+<?php $__env->startSection('content'); ?>
 <div class="content">
     <div class="mb-10">
         <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl shadow-2xl p-8 text-white">
@@ -845,4 +843,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 </style>
-@endsection
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.app', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH D:\laragon\www\analisis_sentimen_TA\resources\views/tfidf.blade.php ENDPATH**/ ?>
