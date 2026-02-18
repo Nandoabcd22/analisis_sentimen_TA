@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ClassificationController;
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
@@ -19,10 +20,19 @@ Route::get('/preprocessing', function () {
     return view('preprocessing');
 })->name('preprocessing');
 
-
+// Classification Routes
 Route::get('/klasifikasi', function () {
     return view('klasifikasi');
 })->name('klasifikasi');
+
+Route::post('/api/train-model', [ClassificationController::class, 'trainModel'])->name('train.model');
+Route::post('/api/load-model', [ClassificationController::class, 'loadModel'])->name('load.model');
+Route::post('/api/predict-sentiment', [ClassificationController::class, 'predictSentiment'])->name('predict.sentiment');
+Route::get('/api/model-metrics', [ClassificationController::class, 'getMetrics'])->name('api.model.metrics');
+Route::get('/api/confusion-matrix', [ClassificationController::class, 'getConfusionMatrix'])->name('api.confusion.matrix');
+Route::get('/api/model-status', [ClassificationController::class, 'getModelStatus'])->name('api.model.status');
+Route::get('/api/debug/python-setup', [ClassificationController::class, 'debugPythonSetup'])->name('debug.python.setup');
+Route::post('/api/debug/test-training', [ClassificationController::class, 'testTrainingSetup'])->name('debug.test.training');
 
 Route::get('/hasil-laporan', function () {
     return view('hasil-laporan');

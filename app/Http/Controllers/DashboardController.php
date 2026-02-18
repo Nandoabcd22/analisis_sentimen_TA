@@ -196,7 +196,7 @@ class DashboardController extends Controller
 
         // Pagination
         $perPage = $request->get('per_page', 10);
-        $reviews = $query->latest()->paginate($perPage);
+        $reviews = $query->orderBy('id', 'asc')->paginate($perPage);
 
         // Convert to array with proper structure
         $reviewsData = [];
@@ -457,20 +457,15 @@ class DashboardController extends Controller
     public function preprocessData()
     {
         try {
-            set_time_limit(900);  // 15 minutes
-            \Log::info('=== BATCH PREPROCESS START ===');
+            \Log::info('=== PREPROCESS CHECK START ===');
             
             $startTime = microtime(true);
             
-            // Get ALL unprocessed reviews at once
-            $reviews = Review::where(function($q) {
-                $q->whereNull('case_folding')->orWhere('case_folding', '');
-            })->get();
-            
+            // Check if data already preprocessed
             $totalReviews = Review::count();
-            $unprocessedCount = $reviews->count();
+            $processedCount = Review::where('case_folding', '!=', '')->count();
             
-            \Log::info("Total: {$totalReviews}, Unprocessed: {$unprocessedCount}");
+            \Log::info("Total: {$totalReviews}, Processed: {$processedCount}");
             
             if ($totalReviews === 0) {
                 return response()->json([
@@ -479,18 +474,35 @@ class DashboardController extends Controller
                 ], 400);
             }
             
-            if ($unprocessedCount === 0) {
+            // If all data already preprocessed, return immediately (instant)
+            if ($processedCount === $totalReviews && $processedCount > 0) {
+                $processingTime = round(microtime(true) - $startTime, 2);
+                \Log::info("All data already preprocessed. Skip Python processing. Time: {$processingTime}s");
+                
                 return response()->json([
                     'success' => true,
-                    'message' => 'All data has already been preprocessed.',
+                    'message' => '✓ Semua data sudah dipreprocess! (Langsung gunakan data yang ada)',
                     'data' => [
-                        'processed_count' => 0,
-                        'processing_time' => 0,
+                        'processed_count' => $processedCount,
+                        'processing_time' => $processingTime,
                         'total_reviews' => $totalReviews,
-                        'remaining_unprocessed' => 0,
+                        'skipped' => true,
+                        'status' => 'Data already preprocessed, skipped Python processing'
                     ]
                 ]);
             }
+            
+            // If still have unprocessed, need to process them
+            $unprocessedCount = $totalReviews - $processedCount;
+            
+            set_time_limit(900);  // 15 minutes for Python processing
+            
+            \Log::info("Found {$unprocessedCount} unprocessed reviews. Starting Python batch processing...");
+            
+            // Get unprocessed reviews
+            $reviews = Review::where(function($q) {
+                $q->whereNull('case_folding')->orWhere('case_folding', '');
+            })->get();
 
             // Prepare batch data for Python
             $batchData = [];
@@ -625,61 +637,62 @@ class DashboardController extends Controller
             throw new \RuntimeException('Preprocessing script not found');
         }
         
-        // Create temporary JSON file for batch data
-        $tempFile = tempnam(sys_get_temp_dir(), 'preprocess_');
-        $jsonData = json_encode($batchData);
+        // Split into chunks to reduce overhead per process
+        $chunkSize = 100; // Process 100 records at a time
+        $chunks = array_chunk($batchData, $chunkSize);
+        $allResults = [];
         
-        \Log::info("Batch file: {$tempFile}, Records: " . count($batchData));
-        
-        if (file_put_contents($tempFile, $jsonData) === false) {
-            throw new \RuntimeException('Failed to write temporary data file');
+        foreach ($chunks as $chunkIdx => $chunk) {
+            // Create temporary JSON file
+            $tempFile = tempnam(sys_get_temp_dir(), 'preprocess_');
+            $jsonData = json_encode($chunk);
+            
+            \Log::info("Chunk " . ($chunkIdx + 1) . "/" . count($chunks) . ": Records: " . count($chunk));
+            
+            if (file_put_contents($tempFile, $jsonData) === false) {
+                throw new \RuntimeException('Failed to write temporary data file');
+            }
+            
+            try {
+                // Prepare command with PYTHONUNBUFFERED for faster I/O
+                $escapedScript = escapeshellarg($scriptPath);
+                $escapedFile = escapeshellarg($tempFile);
+                $cmd = "set PYTHONUNBUFFERED=1 & {$pythonCmd} {$escapedScript} --batch {$escapedFile} 2>&1";
+                
+                // Execute batch
+                $output = shell_exec($cmd);
+                
+                if (!$output) {
+                    throw new \RuntimeException('Python batch execution returned no output for chunk ' . ($chunkIdx + 1));
+                }
+                
+                // Extract JSON from output
+                $output = trim($output);
+                $jsonStart = strpos($output, '[');
+                
+                if ($jsonStart === false) {
+                    \Log::error("No JSON in chunk " . ($chunkIdx + 1) . ": " . substr($output, 0, 200));
+                    throw new \RuntimeException('Invalid output from Python batch script');
+                }
+                
+                $json = substr($output, $jsonStart);
+                $result = json_decode($json, true);
+                
+                if (!is_array($result)) {
+                    throw new \RuntimeException('Failed to parse Python output as JSON for chunk ' . ($chunkIdx + 1));
+                }
+                
+                // Merge results
+                $allResults = array_merge($allResults, $result);
+                \Log::info("Chunk " . ($chunkIdx + 1) . " completed. Total: " . count($allResults));
+                
+            } finally {
+                @unlink($tempFile);
+            }
         }
         
-        try {
-            // Prepare command to process batch via Python
-            $escapedScript = escapeshellarg($scriptPath);
-            $escapedFile = escapeshellarg($tempFile);
-            $cmd = "{$pythonCmd} {$escapedScript} --batch {$escapedFile} 2>&1";
-            
-            \Log::info("Executing: {$cmd}");
-            
-            // Execute
-            $output = shell_exec($cmd);
-            
-            if (!$output) {
-                throw new \RuntimeException('Python batch execution returned no output');
-            }
-            
-            \Log::info("Python output length: " . strlen($output));
-            \Log::info("Python output (first 500 chars): " . substr($output, 0, 500));
-            
-            // Extract JSON from output - look for [ character
-            $output = trim($output);
-            $jsonStart = strpos($output, '[');
-            
-            if ($jsonStart === false) {
-                \Log::error("No JSON array found in output: " . substr($output, 0, 1000));
-                throw new \RuntimeException('Invalid output from Python batch script');
-            }
-            
-            // Extract complete JSON
-            $json = substr($output, $jsonStart);
-            
-            \Log::info("Extracted JSON length: " . strlen($json));
-            
-            $result = json_decode($json, true);
-            
-            if (!is_array($result)) {
-                throw new \RuntimeException('Failed to parse Python batch output as JSON');
-            }
-            
-            \Log::info("Batch processing completed. Results: " . count($result));
-            
-            return $result;
-            
-        } finally {
-            @unlink($tempFile);
-        }
+        \Log::info("All chunks completed. Total results: " . count($allResults));
+        return $allResults;
     }
     
     private function runPythonPreprocess(string $text): array
@@ -763,7 +776,7 @@ class DashboardController extends Controller
 
         // Pagination
         $perPage = $request->get('per_page', 10);
-        $reviews = $query->latest()->paginate($perPage);
+        $reviews = $query->orderBy('id', 'asc')->paginate($perPage);
 
         // Convert to array with proper structure
         $reviewsData = [];
@@ -834,67 +847,77 @@ class DashboardController extends Controller
             // Get all preprocessed data
             $reviews = Review::where('case_folding', '!=', '')
                             ->select('id', 'stemming', 'label')
+                            ->orderBy('id', 'asc')
                             ->get();
 
-            // Calculate TF-IDF scores
-            $tfidfData = [];
-            $totalDocs = $totalReviews;
-
+            // Prepare data for Python TF-IDF calculator
+            $reviewsData = [];
             foreach ($reviews as $review) {
-                $stems = json_decode($review->stemming, true) ?: [];
-                
-                foreach ($stems as $stem) {
-                    $feature = strtolower(trim($stem));
-                    if (empty($feature)) continue;
-
-                    $key = $feature . '_' . $review->label;
-                    
-                    if (!isset($tfidfData[$key])) {
-                        $tfidfData[$key] = [
-                            'feature' => $feature,
-                            'category' => $review->label,
-                            'tfidf_score' => 0,
-                            'document_frequency' => 0
-                        ];
-                    }
-                    
-                    $tfidfData[$key]['tfidf_score'] += (1.0 / count($stems));
-                }
+                $reviewsData[] = [
+                    'id' => $review->id,
+                    'stemming' => json_decode($review->stemming, true) ?: [],
+                    'label' => $review->label
+                ];
             }
 
-            // Calculate document frequency for each feature
-            $docFreq = [];
-            foreach ($reviews as $review) {
-                $stems = json_decode($review->stemming, true) ?: [];
-                $uniqueStems = array_unique(array_map('strtolower', array_filter($stems)));
-                
-                foreach ($uniqueStems as $stem) {
-                    $key = $stem . '_' . $review->label;
-                    if (isset($tfidfData[$key])) {
-                        $tfidfData[$key]['document_frequency']++;
-                    }
-                }
+            // Call Python TF-IDF calculator
+            $pythonScript = base_path('scripts/tfidf_processor.py');
+            $inputFile = storage_path('tfidf_input.json');
+            $outputFile = storage_path('tfidf_output.json');
+            
+            // Save input data to temporary file
+            file_put_contents($inputFile, json_encode($reviewsData, JSON_UNESCAPED_UNICODE));
+            
+            // Execute Python script using venv
+            $pythonExe = base_path('.venv\\Scripts\\python.exe');
+            if (!file_exists($pythonExe)) {
+                $pythonExe = 'python'; // Fallback to system python
             }
-
-            // Round TF-IDF scores
-            foreach ($tfidfData as &$item) {
-                $item['tfidf_score'] = round($item['tfidf_score'], 4);
+            
+            $command = sprintf(
+                '%s %s %s %s 2>&1',
+                escapeshellarg($pythonExe),
+                escapeshellarg($pythonScript),
+                escapeshellarg($inputFile),
+                escapeshellarg($outputFile)
+            );
+            
+            $output = [];
+            $returnCode = 0;
+            exec($command, $output, $returnCode);
+            
+            if ($returnCode !== 0) {
+                throw new \Exception('Python TF-IDF calculation failed: ' . implode('\n', $output));
             }
-
+            
+            // Read results from Python
+            if (!file_exists($outputFile)) {
+                throw new \Exception('TF-IDF output file not created');
+            }
+            
+            $tfidfResults = json_decode(file_get_contents($outputFile), true);
+            
             // Store in storage for later retrieval
-            Storage::put('tfidf_results.json', json_encode(array_values($tfidfData), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            Storage::put('tfidf_results.json', json_encode($tfidfResults['data'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            Storage::put('tfidf_statistics.json', json_encode($tfidfResults['statistics'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+            // Cleanup temporary files
+            @unlink($inputFile);
+            @unlink($outputFile);
 
             \Log::info('TF-IDF processing completed', [
-                'total_features' => count($tfidfData),
-                'total_reviews' => $totalReviews
+                'total_features' => count($tfidfResults['data']),
+                'total_reviews' => $totalReviews,
+                'statistics' => $tfidfResults['statistics']
             ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'TF-IDF processing completed successfully!',
                 'data' => [
-                    'total_features' => count($tfidfData),
-                    'total_reviews' => $totalReviews
+                    'total_features' => count($tfidfResults['data']),
+                    'total_reviews' => $totalReviews,
+                    'statistics' => $tfidfResults['statistics']
                 ]
             ]);
 
@@ -922,40 +945,24 @@ class DashboardController extends Controller
             $perPage = $request->get('per_page', 10);
             $search = $request->get('search', '');
             $download = $request->get('download', 0);
+            $sortBy = $request->get('sort_by', 'tfidf_score');
+            $sortOrder = $request->get('sort_order', 'desc');
 
             // Check if TF-IDF results file exists
             if (!Storage::exists('tfidf_results.json')) {
-                // Generate results on the fly
-                $reviews = Review::where('case_folding', '!=', '')
-                                ->select('id', 'stemming', 'label')
-                                ->get();
-
-                $tfidfData = [];
-
-                foreach ($reviews as $review) {
-                    $stems = json_decode($review->stemming, true) ?: [];
-                    
-                    foreach ($stems as $stem) {
-                        $feature = strtolower(trim($stem));
-                        if (empty($feature)) continue;
-
-                        $key = $feature . '_' . $review->label;
-                        
-                        if (!isset($tfidfData[$key])) {
-                            $tfidfData[$key] = [
-                                'feature' => $feature,
-                                'category' => $review->label,
-                                'tfidf_score' => 0,
-                                'document_frequency' => 0
-                            ];
-                        }
-                        
-                        $tfidfData[$key]['tfidf_score'] = round($tfidfData[$key]['tfidf_score'] + (1.0 / count($stems)), 4);
-                        $tfidfData[$key]['document_frequency']++;
-                    }
-                }
-            } else {
-                $tfidfData = json_decode(Storage::get('tfidf_results.json'), true);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'TF-IDF results not found. Please process TF-IDF first.'
+                ], 400);
+            }
+            
+            // Load results
+            $tfidfData = json_decode(Storage::get('tfidf_results.json'), true);
+            
+            // Load statistics if available
+            $statistics = [];
+            if (Storage::exists('tfidf_statistics.json')) {
+                $statistics = json_decode(Storage::get('tfidf_statistics.json'), true);
             }
 
             // Filter by search
@@ -966,23 +973,37 @@ class DashboardController extends Controller
                 });
             }
 
-            // Sort by TF-IDF score
-            usort($tfidfData, function($a, $b) {
-                return ($b['tfidf_score'] ?? 0) <=> ($a['tfidf_score'] ?? 0);
+            // Sort by specified column
+            usort($tfidfData, function($a, $b) use ($sortBy, $sortOrder) {
+                $aVal = $a[$sortBy] ?? 0;
+                $bVal = $b[$sortBy] ?? 0;
+                $comparison = ($bVal <=> $aVal);
+                return $sortOrder === 'asc' ? -$comparison : $comparison;
             });
 
             $total = count($tfidfData);
             
             // Handle download
             if ($download) {
-                $csv = "Feature,Category,TF-IDF Score,Document Frequency\n";
+                $csv = "Feature,Category,TF,IDF,TF-IDF Score,Term Frequency,Document Frequency,Category Doc Frequency,Category %\n";
                 foreach ($tfidfData as $item) {
-                    $csv .= "\"{$item['feature']}\",\"{$item['category']}\",{$item['tfidf_score']},{$item['document_frequency']}\n";
+                    $csv .= sprintf(
+                        "\"%s\",\"%s\",%f,%f,%f,%d,%d,%d,%f\n",
+                        $item['feature'],
+                        $item['category'],
+                        $item['tf'] ?? 0,
+                        $item['idf'] ?? 0,
+                        $item['tfidf_score'],
+                        $item['term_frequency'] ?? 0,
+                        $item['document_frequency'] ?? 0,
+                        $item['category_doc_frequency'] ?? 0,
+                        $item['category_percentage'] ?? 0
+                    );
                 }
                 
                 return response($csv)
                     ->header('Content-Type', 'text/csv')
-                    ->header('Content-Disposition', 'attachment; filename="tfidf_results.csv"');
+                    ->header('Content-Disposition', 'attachment; filename="tfidf_results_' . date('Y-m-d_H-i-s') . '.csv"');
             }
 
             // Paginate
@@ -992,6 +1013,7 @@ class DashboardController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => array_values($paginatedData),
+                'statistics' => $statistics,
                 'pagination' => [
                     'current_page' => (int)$page,
                     'per_page' => (int)$perPage,
@@ -1020,94 +1042,101 @@ class DashboardController extends Controller
     public function applySmote(Request $request)
     {
         try {
-            \Log::info('SMOTE processing started');
+            \Log::info('Proper SMOTE processing started');
 
-            // Get original data distribution
-            $positif = Review::where('label', 'Positif')->where('case_folding', '!=', '')->count();
-            $negatif = Review::where('label', 'Negatif')->where('case_folding', '!=', '')->count();
-            $netral = Review::where('label', 'Netral')->where('case_folding', '!=', '')->count();
-
-            $originalTotal = $positif + $negatif + $netral;
-
-            if ($originalTotal === 0) {
+            // Get preprocessed data for training (all data for now)
+            $totalReviews = Review::where('case_folding', '!=', '')->count();
+            
+            if ($totalReviews === 0) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No preprocessed data found. Please preprocess data first.'
                 ], 400);
             }
 
-            // Find maximum class count for balancing
-            $maxCount = max($positif, $negatif, $netral);
-            $syntheticCount = 0;
-
-            // Get review data for potential SMOTE generation
+            // Get all preprocessed data
             $reviews = Review::where('case_folding', '!=', '')
-                            ->select('id', 'username', 'review', 'label', 'case_folding', 'cleansing', 'normalisasi', 'tokenizing', 'stopword', 'stemming')
+                            ->select('id', 'stemming', 'label')
+                            ->orderBy('id', 'asc')
                             ->get();
 
-            $reviewsByLabel = $reviews->groupBy('label');
-
-            // Create synthetic samples for minority classes
-            $labelCounts = [
-                'Positif' => $positif,
-                'Negatif' => $negatif,
-                'Netral' => $netral
-            ];
-
-            foreach (['Positif', 'Negatif', 'Netral'] as $label) {
-                $classCount = $labelCounts[$label];
-                
-                if (!$reviewsByLabel->has($label)) {
-                    continue;
-                }
-
-                $classReviews = $reviewsByLabel->get($label);
-                $samplesNeeded = $maxCount - $classCount;
-
-                if ($samplesNeeded > 0) {
-                    // Simple SMOTE: randomly select and duplicate minority samples
-                    for ($i = 0; $i < $samplesNeeded; $i++) {
-                        $randomReview = $classReviews->random();
-                        
-                        Review::create([
-                            'username' => $randomReview['username'] . '_synthetic_' . $i,
-                            'review' => $randomReview['review'] . ' (synthetic)',
-                            'label' => $randomReview['label'],
-                            'case_folding' => $randomReview['case_folding'],
-                            'cleansing' => $randomReview['cleansing'],
-                            'normalisasi' => $randomReview['normalisasi'],
-                            'tokenizing' => $randomReview['tokenizing'],
-                            'stopword' => $randomReview['stopword'],
-                            'stemming' => $randomReview['stemming']
-                        ]);
-                        
-                        $syntheticCount++;
-                    }
-                }
+            // Prepare training data for SMOTE
+            $trainingData = [];
+            foreach ($reviews as $review) {
+                $stems = json_decode($review->stemming, true) ?: [];
+                $trainingData[] = [
+                    'id' => $review->id,
+                    'stemming' => $stems,
+                    'label' => $review->label
+                ];
             }
 
-            // Get new distribution
-            $newTotal = Review::where('case_folding', '!=', '')->count();
-            $newPositif = Review::where('label', 'Positif')->where('case_folding', '!=', '')->count();
-            $newNegatif = Review::where('label', 'Negatif')->where('case_folding', '!=', '')->count();
-            $newNetral = Review::where('label', 'Netral')->where('case_folding', '!=', '')->count();
+            // Call Python SMOTE processor
+            $pythonScript = base_path('scripts/smote_processor.py');
+            $inputFile = storage_path('smote_input.json');
+            $outputFile = storage_path('smote_output.json');
+            
+            // Save training data to temporary file
+            file_put_contents($inputFile, json_encode($trainingData, JSON_UNESCAPED_UNICODE));
+            
+            // Execute Python script using venv
+            $pythonExe = base_path('.venv\\Scripts\\python.exe');
+            if (!file_exists($pythonExe)) {
+                $pythonExe = 'python'; // Fallback to system python
+            }
+            
+            $command = sprintf(
+                '%s %s %s %s 2>&1',
+                escapeshellarg($pythonExe),
+                escapeshellarg($pythonScript),
+                escapeshellarg($inputFile),
+                escapeshellarg($outputFile)
+            );
+            
+            $output = [];
+            $returnCode = 0;
+            exec($command, $output, $returnCode);
+            
+            if ($returnCode !== 0) {
+                throw new \Exception('Python SMOTE failed: ' . implode('\n', $output));
+            }
+            
+            // Read SMOTE results
+            if (!file_exists($outputFile)) {
+                throw new \Exception('SMOTE output file not created');
+            }
+            
+            $smoteResult = json_decode(file_get_contents($outputFile), true);
+            
+            if (!$smoteResult['success']) {
+                throw new \Exception('SMOTE processing failed: ' . ($smoteResult['message'] ?? 'Unknown error'));
+            }
+            
+            // Store SMOTE results and statistics
+            Storage::put('smote_results.json', json_encode($smoteResult['data'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            Storage::put('smote_statistics.json', json_encode($smoteResult['statistics'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+            // Cleanup temporary files
+            @unlink($inputFile);
+            @unlink($outputFile);
 
             \Log::info('SMOTE processing completed', [
-                'synthetic_count' => $syntheticCount,
-                'original_total' => $originalTotal,
-                'new_total' => $newTotal
+                'original_total' => $totalReviews,
+                'synthetic_generated' => $smoteResult['statistics']['synthetic_generated'],
+                'statistics' => $smoteResult['statistics']
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'SMOTE applied successfully!',
+                'message' => $smoteResult['message'],
                 'data' => [
-                    'original_total' => $originalTotal,
-                    'smote_total' => $newTotal,
-                    'synthetic_count' => $syntheticCount,
-                    'positif' => $newPositif,
-                    'negatif' => $newNegatif,
-                    'netral' => $newNetral
+                    'original_total' => $totalReviews,
+                    'synthetic_generated' => $smoteResult['statistics']['synthetic_generated'],
+                    'original_distribution' => $smoteResult['statistics']['original_distribution'],
+                    'new_distribution' => $smoteResult['statistics']['new_distribution'],
+                    'minority_class' => $smoteResult['statistics']['minority_class'] ?? 'N/A',
+                    'feature_space' => $smoteResult['statistics']['feature_space_used'] ?? 'TF-IDF',
+                    'total_samples' => $smoteResult['statistics']['total_samples'] ?? []
                 ]
             ]);
 

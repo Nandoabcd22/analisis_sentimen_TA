@@ -121,8 +121,6 @@
     <div class="main-container">
         <?php echo $__env->yieldContent('content'); ?>
     </div>
-
-    <?php echo $__env->yieldPushContent('scripts'); ?>
 </body>
 </html>
 <?php /**PATH D:\laragon\www\analisis_sentimen_TA\resources\views/layouts/app.blade.php ENDPATH**/ ?>

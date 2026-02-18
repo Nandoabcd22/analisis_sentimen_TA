@@ -26,21 +26,10 @@ class TextPreprocessor:
         # Initialize stemmer and stopword remover
         stemmer_factory = StemmerFactory()
         self.stemmer = stemmer_factory.create_stemmer()
-        # Download NLTK resources (hanya perlu sekali)
-        try:
-            nltk.data.find('tokenizers/punkt')
-        except LookupError:
-            nltk.download('punkt')
-        try:
-            nltk.data.find('tokenizers/punkt_tab')
-        except LookupError:
-            nltk.download('punkt_tab')
-        try:
-            nltk.data.find('corpora/stopwords')
-        except LookupError:
-            nltk.download('stopwords')
-        # Get Indonesian stopwords
-        self.stopwords = set(stopwords.words('indonesian'))
+        # Custom minimal Indonesian stopwords - optimized for sentiment analysis
+        self.stopwords = {
+            'yang', 'dan', 'di', 'ke', 'dari', 'adalah', 'untuk', 'pada'
+        }
         
         # Load normalization dictionary
         self.normalization_dict = self.load_normalization_dict()
@@ -50,7 +39,7 @@ class TextPreprocessor:
         # Gunakan absolute path untuk memastikan ketemu
         import os
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        kamus_path = os.path.join(current_dir, '..', 'kamus_normalisasi.txt')
+        kamus_path = os.path.join(current_dir, '..', 'resources', 'data', 'kamus_normalisasi.txt')
         kamus = {}
         
         try:
@@ -144,6 +133,68 @@ class TextPreprocessor:
         
         return text
     
+    def handle_emoji_and_special(self, text):
+        """Convert emoji and special characters to text representation"""
+        if not isinstance(text, str):
+            return ""
+        
+        # Map common emojis to words (basic support)
+        emoji_map = {
+            '😂': 'haha', '😭': 'sedih', '😡': 'marah', '😍': 'suka', '😱': 'kaget',
+            '😞': 'sedih', '😁': 'senang', '👍': 'bagus', '👎': 'jelek', '❤️': 'suka',
+            '😚': 'suka', '😘': 'suka', '😻': 'senang', '😸': 'senang', '😹': 'tertawa',
+            '😀': 'senyum', '😃': 'ceria', '😄': 'senang', '😅': 'malu', '😆': 'tertawa'
+        }
+        
+        for emoji, text_rep in emoji_map.items():
+            text = text.replace(emoji, f' {text_rep} ')
+        
+        return text
+    
+    def spell_correction(self, text):
+        """Apply basic spell correction for common Indonesian slang"""
+        if not isinstance(text, str):
+            return ""
+        
+        # Common slang corrections
+        slang_corrections = {
+            'bnget': 'banget',
+            'bgt': 'banget',
+            'bgv': 'bagus',
+            'gk': 'tidak',
+            'gkk': 'tidak',
+            'gak': 'tidak',
+            'ga': 'tidak',
+            'nggak': 'tidak',
+            'ngga': 'tidak',
+            'dh': 'sudah',
+            'sdh': 'sudah',
+            'udh': 'sudah',
+            'kk': 'kakak',
+            'yg': 'yang',
+            'utk': 'untuk',
+            'u': 'kamu',
+            'gue': 'saya',
+            'elu': 'kamu',
+            'abis': 'habis',
+            'akinya': 'akibatnya',
+            'akin': 'akibat',
+            'alias': 'yaitu',
+            'amat': 'sangat',
+            'aja': 'saja',
+            'ajah': 'saja'
+        }
+        
+        words = text.split()
+        corrected_words = []
+        for word in words:
+            if word.lower() in slang_corrections:
+                corrected_words.append(slang_corrections[word.lower()])
+            else:
+                corrected_words.append(word)
+        
+        return ' '.join(corrected_words)
+    
     def cleansing(self, text):
         """Remove non-alphanumeric characters except spaces"""
         if not isinstance(text, str):
@@ -167,18 +218,21 @@ class TextPreprocessor:
     def normalisasi(self, text):
         """Normalize text using dictionary"""
         tokens = text.split()
-        normalized_tokens = []
-        
-        for token in tokens:
-            if token.lower() in self.normalization_dict:
-                # Split normalized value into multiple tokens if it contains spaces
-                normalized_words = self.normalization_dict[token.lower()].split()
-                normalized_tokens.extend(normalized_words)
-            else:
-                normalized_tokens.append(token)
-        
+        normalized_tokens = self.normalisasi_kata(tokens, self.normalization_dict)
         result = ' '.join(normalized_tokens)
         return result
+    
+    def normalisasi_kata(self, tokens, kamus):
+        """Normalize tokens using dictionary - handle both string and list input"""
+        normalized_tokens = []
+        for token in tokens:
+            token_lower = token.lower() if isinstance(token, str) else str(token).lower()
+            if token_lower in kamus:
+                # Split if normalized word includes spaces
+                normalized_tokens.extend(kamus[token_lower].split())
+            else:
+                normalized_tokens.append(token_lower)
+        return normalized_tokens
     
     def tokenizing(self, text):
         """Split text into tokens"""
@@ -194,60 +248,62 @@ class TextPreprocessor:
         stemmed_tokens = [self.stemmer.stem(token) for token in tokens]
         return stemmed_tokens
     
+    def parse_token_list(self, token_str):
+        """Parse JSON token string back to list (for CSV reading)"""
+        try:
+            if isinstance(token_str, list):
+                return token_str
+            if isinstance(token_str, str):
+                return json.loads(token_str)
+            return []
+        except:
+            return []
+    
     def preprocess_text(self, text):
-        """Complete preprocessing pipeline for single text"""
+        """Complete preprocessing pipeline for single text with emoji & spell correction"""
         if not isinstance(text, str) or not text.strip():
             return {
-                'original': text,
-                'case_folding': '',
-                'cleansing': '',
-                'normalisasi': '',
-                'tokenizing': [],
-                'stopword': [],
-                'stemming': [],
-                'processed_text': ''
+                'text': text,
+                'case_folded': '',
+                'cleaned': '',
+                'tokens_normalized': [],
+                'tokens_no_stop': [],
+                'text_stemmed': '',
+                'label': ''
             }
-        
+        # Step 0: Handle emoji and special characters
+        text = self.handle_emoji_and_special(text)
         # Step 1: Case folding
         case_folded = self.case_folding(text)
-        
-        # Step 2: Cleansing
-        cleansed = self.cleansing(case_folded)
-        
-        # Skip if cleansing results in empty text
-        if not cleansed.strip():
+        # Step 2: Spell correction for common slang
+        spell_corrected = self.spell_correction(case_folded)
+        # Step 3: Cleaning
+        cleaned = self.cleansing(spell_corrected)
+        if not cleaned.strip():
             return {
-                'original': text,
-                'case_folding': case_folded,
-                'cleansing': '',
-                'normalisasi': '',
-                'tokenizing': [],
-                'stopword': [],
-                'stemming': [],
-                'processed_text': ''
+                'text': text,
+                'case_folded': case_folded,
+                'cleaned': '',
+                'tokens_normalized': [],
+                'tokens_no_stop': [],
+                'text_stemmed': '',
+                'label': ''
             }
-        
-        # Step 3: Normalization
-        normalized = self.normalisasi(cleansed)
-        
-        # Step 4: Tokenizing
-        tokens = self.tokenizing(normalized)
-        
+        # Step 4: Normalisasi kata
+        tokens = self.tokenizing(cleaned)
+        tokens_normalized = self.normalisasi_kata(tokens, self.normalization_dict)
         # Step 5: Stopword removal
-        filtered_tokens = self.stopword_removal(tokens)
-        
+        tokens_no_stop = [w.lower() for w in tokens_normalized if w.lower() not in self.stopwords]
         # Step 6: Stemming
-        stemmed_tokens = self.stemming(filtered_tokens)
-        
+        text_stemmed = " ".join([self.stemmer.stem(w) for w in tokens_no_stop])
         return {
-            'original': text,
-            'case_folding': case_folded,
-            'cleansing': cleansed,
-            'normalisasi': normalized,
-            'tokenizing': tokens,
-            'stopword': filtered_tokens,
-            'stemming': stemmed_tokens,
-            'processed_text': ' '.join(stemmed_tokens)
+            'text': text,
+            'case_folded': case_folded,
+            'cleaned': cleaned,
+            'tokens_normalized': tokens_normalized,
+            'tokens_no_stop': tokens_no_stop,
+            'text_stemmed': text_stemmed,
+            'label': ''
         }
 
 
@@ -268,20 +324,26 @@ def preprocess_csv(input_file, output_file):
     df['stopword'] = ''
     df['stemming'] = ''
     
-    # Process each review - sesuai format Google Colab Anda
+    # Process each review - with improved emoji & spell correction
     case_folding = []
     for index, row in df.iterrows():
         # Support both 'text' and 'review' column names
         text = row['text'] if 'text' in row else row['review']
         
         if isinstance(text, str):
-            # Case folding
-            case_folded = processor.case_folding(text)
+            # Step 1: Handle emoji and special characters
+            emoji_handled = processor.handle_emoji_and_special(text)
+            
+            # Step 2: Case folding
+            case_folded = processor.case_folding(emoji_handled)
             case_folding.append(case_folded)
             df.at[index, 'case_folding'] = case_folded
             
-            # Cleansing
-            cleansed = processor.cleansing(case_folded)
+            # Step 3: Spell correction for common Indonesian slang
+            spell_corrected = processor.spell_correction(case_folded)
+            
+            # Step 4: Cleansing
+            cleansed = processor.cleansing(spell_corrected)
             df.at[index, 'cleansing'] = cleansed
             
             # Normalization

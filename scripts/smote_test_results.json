@@ -1,0 +1,19 @@
+{
+  "original_distribution": {
+    "Positif": 893,
+    "Netral": 775,
+    "Negatif": 180
+  },
+  "new_distribution": {
+    "Positif": 893,
+    "Netral": 893,
+    "Negatif": 893
+  },
+  "synthetic_generated": 831,
+  "total_samples": {
+    "original": 1848,
+    "synthetic": 831,
+    "total": 2679
+  },
+  "balanced": true
+}

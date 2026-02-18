@@ -61,13 +61,8 @@
             </div>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Training Size (%)</label>
-                    <input type="range" id="train-size" min="60" max="90" value="80" class="w-full">
-                    <div class="flex justify-between text-xs text-gray-500">
-                        <span>60%</span>
-                        <span id="train-size-value" class="font-semibold">80%</span>
-                        <span>90%</span>
-                    </div>
+                    <p class="text-sm text-gray-600 mb-3">Fixed Data Split Ratio:</p>
+                    <p class="text-sm font-semibold text-gray-700">Training: <span class="text-blue-600">90%</span> | Testing: <span class="text-orange-600">10%</span></p>
                 </div>
                 <div class="space-y-2">
                     <div class="flex justify-between items-center">
@@ -114,9 +109,14 @@
                     <tr>
                         <th>No</th>
                         <th>Feature</th>
-                        <th>TF-IDF Score</th>
-                        <th>Document Frequency</th>
                         <th>Category</th>
+                        <th title="Term Frequency (normalized)">TF</th>
+                        <th title="Inverse Document Frequency">IDF</th>
+                        <th title="TF × IDF Score">TF-IDF</th>
+                        <th title="Times appeared in document">Term Freq</th>
+                        <th title="Documents containing term">Doc Freq</th>
+                        <th title="Category Doc Frequency">Cat DF</th>
+                        <th title="Percentage in category">Cat %</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -194,15 +194,14 @@ async function loadDataOverview() {
     }
 }
 
-// Update data split based on slider
+// Update data split based on fixed 90:10 ratio
 function updateDataSplit() {
-    const trainSize = parseInt(document.getElementById('train-size').value);
+    const trainSize = 90;  // Fixed: 90% training
     const total = parseInt(document.getElementById('total-data').textContent) || 0;
     
     const trainCount = Math.floor(total * trainSize / 100);
     const testCount = total - trainCount;
     
-    document.getElementById('train-size-value').textContent = trainSize + '%';
     document.getElementById('train-count').textContent = trainCount;
     document.getElementById('test-count').textContent = testCount;
 }
@@ -306,22 +305,43 @@ document.getElementById('apply-smote-btn').addEventListener('click', async funct
 // Update SMOTE status
 function updateSmoteStatus(data) {
     const statusDiv = document.getElementById('smote-status');
+    const totalAfter = data.total_samples?.total || (data.original_total + data.synthetic_generated);
+    const syntheticCount = data.synthetic_generated || data.total_samples?.synthetic || 0;
+    
     statusDiv.innerHTML = `
         <div class="space-y-3">
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">Original:</span>
-                <span class="font-semibold">${data.original_total}</span>
+                <span class="font-semibold">${data.original_total || 0}</span>
             </div>
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">After SMOTE:</span>
-                <span class="font-semibold text-green-600">${data.smote_total}</span>
+                <span class="font-semibold text-green-600">${totalAfter}</span>
             </div>
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">Synthetic:</span>
-                <span class="font-semibold text-blue-600">${data.synthetic_count}</span>
+                <span class="font-semibold text-blue-600">${syntheticCount}</span>
             </div>
-            <div class="text-center pt-2">
+            <div class="text-center pt-4">
+                <div class="grid grid-cols-3 gap-2 text-center mb-3">
+                    <div>
+                        <p class="text-xs text-gray-500">Positif</p>
+                        <p class="text-sm font-semibold text-green-600">${data.original_distribution?.Positif || 0}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Negatif</p>
+                        <p class="text-sm font-semibold text-red-600">${data.original_distribution?.Negatif || 0}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Netral</p>
+                        <p class="text-sm font-semibold text-blue-600">${data.original_distribution?.Netral || 0}</p>
+                    </div>
+                </div>
                 <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    SMOTE Applied
+                </span>
+            </div>
                     <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span> SMOTE Applied
                 </span>
             </div>
@@ -332,13 +352,21 @@ function updateSmoteStatus(data) {
 // Draw SMOTE chart
 function drawSmoteChart(data) {
     const ctx = document.getElementById('smoteCanvas').getContext('2d');
+    
+    // Get distribution from new_distribution or fallback to old format
+    const distribution = data.new_distribution || {
+        'Positif': data.positif || 0,
+        'Negatif': data.negatif || 0,
+        'Netral': data.netral || 0
+    };
+    
     new Chart(ctx, {
         type: 'bar',
         data: {
             labels: ['Positif', 'Negatif', 'Netral'],
             datasets: [{
                 label: 'After SMOTE',
-                data: [data.positif, data.negatif, data.netral],
+                data: [distribution.Positif || 0, distribution.Negatif || 0, distribution.Netral || 0],
                 backgroundColor: ['#10b981', '#ef4444', '#f59e0b']
             }]
         },
@@ -399,7 +427,7 @@ function renderTfidfTable(data) {
     tbody.innerHTML = '';
 
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500">No TF-IDF data available. Please process TF-IDF first.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-gray-500">No TF-IDF data available. Please process TF-IDF first.</td></tr>';
         return;
     }
 
@@ -408,11 +436,16 @@ function renderTfidfTable(data) {
         row.innerHTML = `
             <td>${(currentPage - 1) * entriesPerPage + index + 1}</td>
             <td class="max-w-xs truncate" title="${item.feature}">${item.feature}</td>
-            <td class="text-center">${item.tfidf_score ? item.tfidf_score.toFixed(4) : '-'}</td>
-            <td class="text-center">${item.document_frequency || '-'}</td>
             <td class="text-center">
                 <span class="label-badge ${item.category ? item.category.toLowerCase() : 'netral'}">${item.category || '-'}</span>
             </td>
+            <td class="text-center">${item.tf ? item.tf.toFixed(6) : '-'}</td>
+            <td class="text-center">${item.idf ? item.idf.toFixed(6) : '-'}</td>
+            <td class="text-center font-semibold text-blue-600">${item.tfidf_score ? item.tfidf_score.toFixed(6) : '-'}</td>
+            <td class="text-center">${item.term_frequency || 0}</td>
+            <td class="text-center">${item.document_frequency || '-'}</td>
+            <td class="text-center">${item.category_doc_frequency || '-'}</td>
+            <td class="text-center">${item.category_percentage ? item.category_percentage.toFixed(2) + '%' : '-'}</td>
         `;
         tbody.appendChild(row);
     });
@@ -531,9 +564,6 @@ if (searchInput) {
         }, 500);
     });
 }
-
-// Train size slider
-document.getElementById('train-size').addEventListener('input', updateDataSplit);
 
 // Load data on page load
 document.addEventListener('DOMContentLoaded', function() {

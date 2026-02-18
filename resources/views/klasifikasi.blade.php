@@ -1,234 +1,237 @@
 @extends('layouts.app')
 
-@section('title', 'Klasifikasi')
+@section('title', 'Klasifikasi SVM')
 
 @section('content')
 <div class="content">
     <div class="page-header">
-        <h1>Klasifikasi Sentimen</h1>
+        <h1>Klasifikasi Sentimen dengan SVM</h1>
+        <p>Lakukan training model SVM untuk klasifikasi sentimen menggunakan data yang sudah dipreprocessing.</p>
     </div>
 
-    <!-- Model Training Section -->
+    <!-- Training Control Section -->
     <div class="section-card">
-        <h2 class="section-title">Training Model SVM</h2>
+        <h2 class="section-title">Parameter Training</h2>
+        
+        <div class="form-group">
+            <label class="form-label">Pilih Kernel SVM</label>
+            <select id="kernel-select" class="form-input">
+                <option value="rbf" selected>RBF (Radial Basis Function) - Default</option>
+                <option value="linear">Linear</option>
+                <option value="polynomial">Polynomial</option>
+                <option value="sigmoid">Sigmoid</option>
+            </select>
+        </div>
 
-        <div class="training-section">
-            <div class="form-group">
-                <label for="kernel-select" class="form-label">Pilih Kernel</label>
-                <select id="kernel-select" class="form-input">
-                    <option value="linear">Linear</option>
-                    <option value="rbf">RBF (Radial Basis Function)</option>
-                    <option value="polynomial">Polynomial</option>
-                    <option value="sigmoid">Sigmoid</option>
-                </select>
-            </div>
+        <div class="form-group">
+            <label class="form-label">Ukuran Test Set (%): <span id="test-size-display">10</span>%</label>
+            <input type="range" id="test-size" class="form-input" min="10" max="50" value="10" step="5">
+        </div>
 
-            <div class="form-group">
-                <label for="test-size" class="form-label">Ukuran Test Set (%)</label>
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <input type="range" id="test-size" class="form-range" min="10" max="50" value="20" step="5">
-                    <span class="test-size-value">20%</span>
+        <div class="form-group">
+            <button id="train-btn" class="btn btn-primary">Mulai Training</button>
+        </div>
+    </div>
+
+    <!-- Training Progress Section -->
+    <div id="progress-section" class="section-card" style="display: none;">
+        <h2 class="section-title">Status Training</h2>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <p id="progress-text" class="progress-text">Initializing...</p>
+    </div>
+
+    <!-- Results Section -->
+    <div id="results-section" style="display: none;">
+        <!-- Configuration -->
+        <div class="section-card">
+            <h2 class="section-title">Konfigurasi Model</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Kernel:</span>
+                    <span class="info-value" id="result-kernel">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Total Data:</span>
+                    <span class="info-value" id="result-total">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Training:</span>
+                    <span class="info-value" id="result-train">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Testing:</span>
+                    <span class="info-value" id="result-test">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Features:</span>
+                    <span class="info-value" id="result-features">-</span>
                 </div>
             </div>
+        </div>
 
-            <div class="form-actions">
-                <button class="btn btn-primary" id="train-model-btn">Train Model</button>
-                <button class="btn btn-secondary" id="load-model-btn">Load Model</button>
+        <!-- Metrics -->
+        <div class="section-card">
+            <h2 class="section-title">Hasil Evaluasi Model</h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Accuracy</div>
+                    <div class="metric-value" id="metric-accuracy">-</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Precision</div>
+                    <div class="metric-value" id="metric-precision">-</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Recall</div>
+                    <div class="metric-value" id="metric-recall">-</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">F1 Score</div>
+                    <div class="metric-value" id="metric-f1">-</div>
+                </div>
             </div>
         </div>
 
-        <!-- Training Progress -->
-        <div id="training-progress" style="display: none; margin-top: 30px;">
-            <h3 style="margin-bottom: 15px;">Status Training</h3>
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: 0%"></div>
-            </div>
-            <p class="progress-text">Initializing...</p>
-        </div>
-    </div>
-
-    <!-- Model Evaluation Section -->
-    <div class="section-card">
-        <h2 class="section-title">Evaluasi Model</h2>
-
-        <div class="metrics-grid">
-            <div class="metric-card">
-                <h3>Akurasi</h3>
-                <p class="metric-value">85.5%</p>
-                <p class="metric-label">Model Accuracy</p>
-            </div>
-            <div class="metric-card">
-                <h3>Presisi</h3>
-                <p class="metric-value">87.2%</p>
-                <p class="metric-label">Precision Score</p>
-            </div>
-            <div class="metric-card">
-                <h3>Recall</h3>
-                <p class="metric-value">83.8%</p>
-                <p class="metric-label">Recall Score</p>
-            </div>
-            <div class="metric-card">
-                <h3>F1-Score</h3>
-                <p class="metric-value">85.4%</p>
-                <p class="metric-label">F1 Score</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Confusion Matrix Section -->
-    <div class="section-card">
-        <h2 class="section-title">Confusion Matrix</h2>
-
-        <div class="matrix-container">
-            <table class="confusion-matrix">
+        <!-- Per-Class Metrics -->
+        <div class="section-card">
+            <h2 class="section-title">Metrik Per Kelas</h2>
+            <table class="metrics-table">
                 <thead>
                     <tr>
-                        <th colspan="2"></th>
-                        <th colspan="3" style="text-align: center;">Predicted</th>
+                        <th>Kelas</th>
+                        <th>Precision</th>
+                        <th>Recall</th>
+                        <th>F1-Score</th>
+                        <th>Support</th>
+                    </tr>
+                </thead>
+                <tbody id="per-class-tbody">
+                    <tr><td colspan="5" style="text-align: center; color: #999;">No data</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Confusion Matrix -->
+        <div class="section-card">
+            <h2 class="section-title">Confusion Matrix Heatmap</h2>
+            <div style="display: flex; justify-content: center;">
+                <canvas id="cm-canvas" style="border: 1px solid #ddd;"></canvas>
+            </div>
+            <table class="cm-table">
+                <thead>
+                    <tr>
+                        <th colspan="2">Predicted / Actual</th>
+                        <td colspan="3" style="text-align: center;">Predicted</td>
                     </tr>
                     <tr>
-                        <th colspan="2">Actual</th>
-                        <th>Positif</th>
-                        <th>Negatif</th>
-                        <th>Netral</th>
+                        <th colspan="2"></th>
+                        <td id="cm-header-0">Class 0</td>
+                        <td id="cm-header-1">Class 1</td>
+                        <td id="cm-header-2">Class 2</td>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <th rowspan="3">Actual</th>
-                        <td>Positif</td>
-                        <td class="matrix-true">45</td>
-                        <td class="matrix-false">5</td>
-                        <td class="matrix-false">2</td>
+                        <td rowspan="3" style="writing-mode: vertical-rl; transform: rotate(180deg);">Actual</td>
+                        <td id="cm-label-0">Class 0</td>
+                        <td id="cm-00">0</td>
+                        <td id="cm-01">0</td>
+                        <td id="cm-02">0</td>
                     </tr>
                     <tr>
-                        <td>Negatif</td>
-                        <td class="matrix-false">4</td>
-                        <td class="matrix-true">48</td>
-                        <td class="matrix-false">3</td>
+                        <td id="cm-label-1">Class 1</td>
+                        <td id="cm-10">0</td>
+                        <td id="cm-11">0</td>
+                        <td id="cm-12">0</td>
                     </tr>
                     <tr>
-                        <td>Netral</td>
-                        <td class="matrix-false">2</td>
-                        <td class="matrix-false">3</td>
-                        <td class="matrix-true">11</td>
+                        <td id="cm-label-2">Class 2</td>
+                        <td id="cm-20">0</td>
+                        <td id="cm-21">0</td>
+                        <td id="cm-22">0</td>
                     </tr>
                 </tbody>
             </table>
         </div>
     </div>
-
-    <!-- Test Prediction Section -->
-    <div class="section-card">
-        <h2 class="section-title">Test Prediksi</h2>
-
-        <div class="test-section">
-            <div class="form-group">
-                <label for="test-text" class="form-label">Masukkan Teks untuk Prediksi</label>
-                <textarea id="test-text" class="form-textarea" placeholder="Ketikkan review di sini..."></textarea>
-            </div>
-
-            <button class="btn btn-primary" id="predict-btn">Prediksi Sentimen</button>
-
-            <div id="prediction-result" style="display: none; margin-top: 20px;">
-                <div class="prediction-box">
-                    <h3 style="margin: 0 0 15px 0;">Hasil Prediksi</h3>
-                    <p style="margin: 0 0 10px 0; color: #999;">Teks:</p>
-                    <p id="result-text" style="margin: 0 0 20px 0; background: #f5f5f5; padding: 15px; border-radius: 4px;"></p>
-                    
-                    <p style="margin: 0 0 10px 0; color: #999;">Sentimen:</p>
-                    <div class="prediction-sentiment">
-                        <div class="sentiment-badge" id="sentiment-badge"></div>
-                    </div>
-
-                    <p style="margin: 20px 0 10px 0; color: #999;">Confidence Score:</p>
-                    <div class="confidence-bar">
-                        <div class="confidence-fill" id="confidence-fill"></div>
-                    </div>
-                    <p id="confidence-text" style="text-align: right; margin: 5px 0 0 0; font-weight: 600;"></p>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <style>
+    .content {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 30px 20px;
+    }
+
     .page-header {
         margin-bottom: 40px;
     }
 
     .page-header h1 {
-        font-size: 28px;
+        font-size: 32px;
         font-weight: 700;
+        margin: 0 0 15px 0;
         color: #1a1a1a;
+    }
+
+    .page-header p {
+        font-size: 16px;
+        color: #666;
+        margin: 0;
+        line-height: 1.5;
     }
 
     .section-card {
         background: white;
+        border: 1px solid #e0e0e0;
         border-radius: 8px;
         padding: 30px;
-        margin-bottom: 30px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        margin-bottom: 25px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
 
     .section-title {
         font-size: 18px;
         font-weight: 600;
         color: #1a1a1a;
-        margin-bottom: 30px;
+        margin: 0 0 25px 0;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #2196F3;
     }
 
-    /* Form Elements */
     .form-group {
-        margin-bottom: 25px;
+        margin-bottom: 20px;
     }
 
     .form-label {
         display: block;
         font-size: 14px;
         font-weight: 500;
-        color: #1a1a1a;
-        margin-bottom: 10px;
+        color: #333;
+        margin-bottom: 8px;
     }
 
-    .form-input,
-    .form-range,
-    .form-textarea {
+    .form-input {
         width: 100%;
-        padding: 10px 12px;
+        padding: 12px 15px;
         border: 1px solid #ddd;
-        border-radius: 4px;
+        border-radius: 6px;
         font-size: 14px;
         font-family: inherit;
     }
 
-    .form-input:focus,
-    .form-range:focus,
-    .form-textarea:focus {
+    .form-input:focus {
         outline: none;
         border-color: #2196F3;
-        box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+        box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
     }
 
-    .form-textarea {
-        resize: vertical;
-        min-height: 120px;
-    }
-
-    .test-size-value {
-        min-width: 40px;
-        text-align: right;
-        font-weight: 600;
-    }
-
-    /* Buttons */
     .btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 24px;
+        padding: 12px 30px;
         border: none;
-        border-radius: 4px;
+        border-radius: 6px;
         font-size: 14px;
         font-weight: 500;
         cursor: pointer;
@@ -240,265 +243,363 @@
         color: white;
     }
 
-    .btn-primary:hover {
+    .btn-primary:hover:not(:disabled) {
         background: #1976D2;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
     }
 
-    .btn-secondary {
-        background: #f5f5f5;
-        color: #666;
-        border: 1px solid #e0e0e0;
+    .btn-primary:disabled {
+        background: #90caf9;
+        cursor: not-allowed;
+        transform: none;
     }
 
-    .btn-secondary:hover {
-        background: #f0f0f0;
-    }
-
-    .form-actions {
-        display: flex;
-        gap: 15px;
-        margin-top: 30px;
-    }
-
-    /* Progress Bar */
     .progress-bar {
         width: 100%;
-        height: 8px;
+        height: 10px;
         background: #f0f0f0;
-        border-radius: 4px;
+        border-radius: 5px;
         overflow: hidden;
-        margin-bottom: 10px;
+        margin-bottom: 15px;
     }
 
     .progress-fill {
         height: 100%;
         background: linear-gradient(90deg, #4CAF50, #45a049);
+        width: 0%;
         transition: width 0.3s ease;
     }
 
     .progress-text {
-        margin: 0;
-        font-size: 13px;
+        font-size: 14px;
         color: #666;
+        margin: 0;
     }
 
-    /* Metrics Grid */
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+
+    .info-item {
+        background: #f9f9f9;
+        padding: 15px;
+        border-radius: 6px;
+        border-left: 4px solid #2196F3;
+    }
+
+    .info-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: #666;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+    }
+
+    .info-value {
+        display: block;
+        font-size: 18px;
+        font-weight: 700;
+        color: #1a1a1a;
+    }
+
     .metrics-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
         gap: 20px;
     }
 
     .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background: linear-gradient(135deg, #f5f5f5, #fafafa);
         padding: 25px;
         border-radius: 8px;
+        border: 2px solid #e0e0e0;
         text-align: center;
-    }
-
-    .metric-card h3 {
-        margin: 0 0 15px 0;
-        font-size: 14px;
-        font-weight: 600;
-        opacity: 0.9;
-    }
-
-    .metric-value {
-        margin: 0 0 8px 0;
-        font-size: 36px;
-        font-weight: 700;
     }
 
     .metric-label {
-        margin: 0;
         font-size: 12px;
-        opacity: 0.85;
+        font-weight: 600;
+        color: #2196F3;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 10px;
     }
 
-    /* Confusion Matrix */
-    .matrix-container {
-        overflow-x: auto;
-    }
-
-    .confusion-matrix {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 0;
-    }
-
-    .confusion-matrix th,
-    .confusion-matrix td {
-        padding: 12px;
-        text-align: center;
-        border: 1px solid #e0e0e0;
-        font-size: 14px;
-        font-weight: 500;
-    }
-
-    .confusion-matrix th {
-        background: #f5f5f5;
+    .metric-value {
+        font-size: 36px;
+        font-weight: 700;
         color: #1a1a1a;
     }
 
-    .confusion-matrix td {
-        background: white;
-    }
-
-    .matrix-true {
-        background: #e8f5e9;
-        color: #2e7d32;
-        font-weight: 600;
-    }
-
-    .matrix-false {
-        background: #ffebee;
-        color: #c62828;
-    }
-
-    /* Prediction Result */
-    .prediction-box {
-        background: #f9f9f9;
-        border: 1px solid #e0e0e0;
-        border-radius: 6px;
-        padding: 20px;
-    }
-
-    .prediction-sentiment {
-        display: flex;
-        gap: 15px;
-        margin-bottom: 20px;
-    }
-
-    .sentiment-badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 12px 20px;
-        border-radius: 20px;
-        font-weight: 600;
-        font-size: 16px;
-        color: white;
-        min-width: 150px;
-    }
-
-    .sentiment-badge.positif {
-        background: linear-gradient(135deg, #4CAF50, #45a049);
-    }
-
-    .sentiment-badge.negatif {
-        background: linear-gradient(135deg, #f44336, #da190b);
-    }
-
-    .sentiment-badge.netral {
-        background: linear-gradient(135deg, #ff9800, #f57c00);
-    }
-
-    /* Confidence Bar */
-    .confidence-bar {
+    .metrics-table {
         width: 100%;
-        height: 8px;
-        background: #f0f0f0;
-        border-radius: 4px;
-        overflow: hidden;
+        border-collapse: collapse;
+        margin-top: 20px;
     }
 
-    .confidence-fill {
-        height: 100%;
-        background: linear-gradient(90deg, #4CAF50, #45a049);
-        transition: width 0.3s ease;
+    .metrics-table thead {
+        background: #f5f5f5;
     }
 
-    #confidence-text {
+    .metrics-table th {
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        color: #333;
+        border-bottom: 2px solid #ddd;
+    }
+
+    .metrics-table td {
+        padding: 12px;
+        border-bottom: 1px solid #eee;
+        color: #666;
+    }
+
+    .metrics-table tbody tr:hover {
+        background: #f9f9f9;
+    }
+
+    .metrics-table tbody td:nth-child(2),
+    .metrics-table tbody td:nth-child(3),
+    .metrics-table tbody td:nth-child(4),
+    .metrics-table tbody td:nth-child(5) {
+        text-align: center;
+        font-weight: 600;
+        color: #1a1a1a;
+    }
+
+    .cm-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
         font-size: 13px;
     }
 
-    /* Responsive */
+    .cm-table td, .cm-table th {
+        padding: 12px;
+        text-align: center;
+        border: 1px solid #ddd;
+    }
+
+    .cm-table th {
+        background: #f5f5f5;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .cm-table tbody td {
+        color: #1a1a1a;
+        font-weight: 500;
+    }
+
+    .cm-table tbody tr:nth-child(odd) {
+        background: #f9f9f9;
+    }
+
     @media (max-width: 768px) {
         .section-card {
             padding: 20px;
         }
 
-        .form-actions {
-            flex-direction: column;
-        }
-
-        .btn {
-            width: 100%;
-            justify-content: center;
+        .page-header h1 {
+            font-size: 24px;
         }
 
         .metrics-grid {
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            grid-template-columns: 1fr 1fr;
         }
 
-        .confusion-matrix th,
-        .confusion-matrix td {
-            padding: 8px;
-            font-size: 12px;
-        }
-
-        .metric-value {
-            font-size: 28px;
+        .info-grid {
+            grid-template-columns: 1fr;
         }
     }
 </style>
 
 <script>
-    // Range slider
+    const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+    // Update test size display
     document.getElementById('test-size').addEventListener('input', function(e) {
-        document.querySelector('.test-size-value').textContent = e.target.value + '%';
+        document.getElementById('test-size-display').textContent = e.target.value;
     });
 
-    // Train model
-    document.getElementById('train-model-btn').addEventListener('click', function() {
-        const progressDiv = document.getElementById('training-progress');
-        progressDiv.style.display = 'block';
+    // Train button
+    document.getElementById('train-btn').addEventListener('click', trainModel);
+
+    async function trainModel() {
+        const kernel = document.getElementById('kernel-select').value;
+        const testSize = parseInt(document.getElementById('test-size').value);
         
-        let progress = 0;
-        const interval = setInterval(() => {
-            progress += Math.random() * 30;
-            if (progress >= 100) {
-                progress = 100;
-                clearInterval(interval);
-            }
-            document.querySelector('.progress-fill').style.width = progress + '%';
-            
-            const status = progress < 50 ? 'Data preparation...' : 
-                          progress < 80 ? 'Training SVM...' : 
-                          progress < 100 ? 'Evaluating model...' : 
-                          'Training completed!';
-            document.querySelector('.progress-text').textContent = status;
-        }, 500);
-    });
+        const trainBtn = document.getElementById('train-btn');
+        trainBtn.disabled = true;
+        trainBtn.textContent = 'Training...';
 
-    // Predict sentiment
-    document.getElementById('predict-btn').addEventListener('click', function() {
-        const text = document.getElementById('test-text').value;
-        if (!text.trim()) {
-            alert('Silakan masukkan teks untuk prediksi');
-            return;
+        document.getElementById('progress-section').style.display = 'block';
+        document.getElementById('results-section').style.display = 'none';
+
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            progress = Math.min(progress + Math.random() * 20, 95);
+            updateProgress(progress, 'Processing...');
+        }, 400);
+
+        try {
+            const response = await fetch('/api/train-model', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': CSRF_TOKEN
+                },
+                body: JSON.stringify({
+                    kernel,
+                    test_size: testSize
+                })
+            });
+
+            const data = await response.json();
+
+            clearInterval(progressInterval);
+            updateProgress(100, 'Completed!');
+
+            if (data.success) {
+                displayResults(data.data);
+                document.getElementById('results-section').style.display = 'block';
+                alert('✓ Model training berhasil!');
+            } else {
+                alert('✗ Error: ' + (data.message || 'Training failed'));
+            }
+        } catch (error) {
+            clearInterval(progressInterval);
+            console.error('Error:', error);
+            alert('✗ Error: ' + error.message);
+        } finally {
+            trainBtn.disabled = false;
+            trainBtn.textContent = 'Mulai Training';
+        }
+    }
+
+    function updateProgress(percent, text) {
+        document.getElementById('progress-fill').style.width = percent + '%';
+        document.getElementById('progress-text').textContent = text + ' (' + Math.round(percent) + '%)';
+    }
+
+    function displayResults(data) {
+        // Config
+        document.getElementById('result-kernel').textContent = data.kernel || '-';
+        document.getElementById('result-total').textContent = (data.total_samples || 0).toLocaleString();
+        document.getElementById('result-train').textContent = (data.train_samples || 0).toLocaleString();
+        document.getElementById('result-test').textContent = (data.test_samples || 0).toLocaleString();
+        document.getElementById('result-features').textContent = (data.features || 0).toLocaleString();
+
+        // Metrics
+        const accuracy = parseFloat(data.accuracy || 0);
+        const precision = parseFloat(data.precision || 0);
+        const recall = parseFloat(data.recall || 0);
+        const f1 = parseFloat(data.f1_score || 0);
+
+        document.getElementById('metric-accuracy').textContent = (accuracy * 100).toFixed(2) + '%';
+        document.getElementById('metric-precision').textContent = (precision * 100).toFixed(2) + '%';
+        document.getElementById('metric-recall').textContent = (recall * 100).toFixed(2) + '%';
+        document.getElementById('metric-f1').textContent = (f1 * 100).toFixed(2) + '%';
+
+        // Per-class metrics
+        const perClass = data.per_class_metrics || {};
+        const tbody = document.getElementById('per-class-tbody');
+        tbody.innerHTML = '';
+
+        for (const [className, metrics] of Object.entries(perClass)) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><strong>${className}</strong></td>
+                <td>${(metrics.precision * 100).toFixed(2)}%</td>
+                <td>${(metrics.recall * 100).toFixed(2)}%</td>
+                <td>${(metrics['f1-score'] * 100).toFixed(2)}%</td>
+                <td>${metrics.support || 0}</td>
+            `;
+            tbody.appendChild(row);
         }
 
-        const sentiments = ['positif', 'negatif', 'netral'];
-        const sentiment = sentiments[Math.floor(Math.random() * sentiments.length)];
-        const confidence = Math.random() * 0.3 + 0.7;
+        // Confusion Matrix
+        const cm = data.confusion_matrix || [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+        const classes = data.classes || ['Class 0', 'Class 1', 'Class 2'];
 
-        document.getElementById('result-text').textContent = text;
-        
-        const badge = document.getElementById('sentiment-badge');
-        badge.textContent = sentiment.charAt(0).toUpperCase() + sentiment.slice(1);
-        badge.className = 'sentiment-badge ' + sentiment;
+        // Update CM header and labels
+        for (let i = 0; i < 3; i++) {
+            document.getElementById('cm-header-' + i).textContent = classes[i] || 'Class ' + i;
+            document.getElementById('cm-label-' + i).textContent = classes[i] || 'Class ' + i;
+        }
 
-        document.getElementById('confidence-fill').style.width = (confidence * 100) + '%';
-        document.getElementById('confidence-text').textContent = (confidence * 100).toFixed(2) + '%';
+        // Fill CM values
+        for (let i = 0; i < 3; i++) {
+            for (let j = 0; j < 3; j++) {
+                const cellId = 'cm-' + i + j;
+                document.getElementById(cellId).textContent = cm[i]?.[j] || 0;
+            }
+        }
 
-        document.getElementById('prediction-result').style.display = 'block';
-    });
+        // Draw heatmap
+        drawConfusionMatrixHeatmap(cm, classes);
+    }
 
-    // Load model
-    document.getElementById('load-model-btn').addEventListener('click', function() {
-        alert('Loading model dari storage...');
-    });
+    function drawConfusionMatrixHeatmap(cm, classes) {
+        const canvas = document.getElementById('cm-canvas');
+        const ctx = canvas.getContext('2d');
+        const cellSize = 80;
+        const padding = 70;
+        const fontSize = 14;
+
+        canvas.width = 3 * cellSize + padding;
+        canvas.height = 3 * cellSize + padding + 20;
+
+        const maxVal = Math.max(...cm.flat());
+
+        // Draw background
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.font = 'bold ' + fontSize + 'px Arial';
+        ctx.fillStyle = '#666';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // Draw top labels
+        for (let i = 0; i < 3; i++) {
+            ctx.fillText(classes[i], padding + (i + 0.5) * cellSize, 25);
+        }
+
+        // Draw left labels
+        for (let i = 0; i < 3; i++) {
+            ctx.fillText(classes[i], 35, padding + (i + 0.5) * cellSize);
+        }
+
+        // Draw cells
+        for (let i = 0; i < 3; i++) {
+            for (let j = 0; j < 3; j++) {
+                const x = padding + j * cellSize;
+                const y = padding + i * cellSize;
+                const value = cm[i][j];
+                const intensity = maxVal > 0 ? value / maxVal : 0;
+
+                // Cell background
+                ctx.fillStyle = `rgba(33, 150, 243, ${intensity * 0.7 + 0.1})`;
+                ctx.fillRect(x, y, cellSize, cellSize);
+
+                // Cell border
+                ctx.strokeStyle = '#ddd';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x, y, cellSize, cellSize);
+
+                // Value text
+                ctx.fillStyle = intensity > 0.5 ? 'white' : '#333';
+                ctx.font = 'bold 16px Arial';
+                ctx.fillText(value, x + cellSize / 2, y + cellSize / 2);
+            }
+        }
+    }
 </script>
 @endsection

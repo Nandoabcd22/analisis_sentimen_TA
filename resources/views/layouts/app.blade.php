@@ -121,7 +121,5 @@
     <div class="main-container">
         @yield('content')
     </div>
-
-    @stack('scripts')
 </body>
 </html>
