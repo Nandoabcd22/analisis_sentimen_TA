@@ -9,7 +9,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-4xl font-bold tracking-tight mb-2">TF-IDF & Data Processing</h1>
-                    <p class="text-blue-100 text-lg">Proses TF-IDF, pembagian data training/testing, dan implementasi SMOTE untuk balancing data</p>
+                    <p class="text-blue-100 text-lg">📊 Visualisasi Data, Pembagian Training/Testing, dan SMOTE. <strong>Note:</strong> TF-IDF sekarang dihitung saat training dan di-reuse otomatis untuk mencegah duplikasi.</p>
                 </div>
                 <div class="flex gap-3">
                     <button id="process-tfidf-btn" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-blue-700 transition">

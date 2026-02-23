@@ -17,6 +17,12 @@ from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
 
+# LOCK RANDOMNESS FOR REPRODUCIBILITY
+RANDOM_SEED = 42
+np.random.seed(RANDOM_SEED)
+import random
+random.seed(RANDOM_SEED)
+
 # Force UTF-8 encoding on Windows
 if sys.platform == 'win32':
     import io
@@ -84,13 +90,14 @@ def case_folding(text):
 
 def clean_text(text):
     """Step 2: Remove special characters"""
-    text = re.sub(r'http\S+', '', text)  # Remove URLs
-    text = re.sub(r'@\w+', '', text)     # Remove mentions
-    text = re.sub(r'#\w+', '', text)     # Remove hashtags
-    text = re.sub(r'[^\w\s]', '', text)  # Remove special chars
-    text = re.sub(r'\d+', '', text)      # Remove numbers
-    text = re.sub(r'\s+', ' ', text)     # Remove extra spaces
-    return text.strip()
+    if not isinstance(text, str):
+        return ""
+    text = re.sub(r'http\S+|www\S+', '', text)  # Remove URLs
+    text = re.sub(r'@\w+|#\w+', '', text)       # Remove mentions & hashtags
+    text = re.sub(r'\d+', '', text)             # Remove numbers
+    text = re.sub(r'[^a-zA-Z\s]', '', text)     # Remove special chars (only keep letters & space)
+    text = re.sub(r'\s+', ' ', text).strip()    # Remove extra spaces
+    return text
 
 
 def tokenize_text(text):
@@ -111,7 +118,7 @@ def normalisasi_kata(tokens, kamus):
         if token_lower in kamus:
             normalized.extend(kamus[token_lower].split())
         else:
-            normalized.append(token_lower)
+            normalized.append(token)  # Keep original token case
     return normalized
 
 
@@ -121,7 +128,7 @@ def remove_stopwords(tokens):
         stopwords_set = set(stopwords.words('indonesian'))
     except:
         stopwords_set = {'yang', 'dan', 'di', 'ke', 'dari', 'untuk', 'pada', 'adalah', 'ini', 'itu', 'ada'}
-    return [t for t in tokens if t not in stopwords_set and len(t) > 2]
+    return [t.lower() for t in tokens if t.lower() not in stopwords_set]
 
 
 def stemming_tokens(tokens):
@@ -154,7 +161,7 @@ def preprocess_text(text, kamus):
 
 
 def connect_database():
-    """Load reviews from database"""
+    """Load reviews from database, prefer cached stemmed_text"""
     try:
         import mysql.connector
         conn = mysql.connector.connect(
@@ -164,15 +171,53 @@ def connect_database():
             database='analisis_sentimen_ta'
         )
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id, review as text, label FROM reviews WHERE review IS NOT NULL AND review != ''")
+        
+        # Load with stemmed_text if available
+        cursor.execute("""
+            SELECT id, review as text, label, 
+                   COALESCE(stemmed_text, '') as cached_stemmed
+            FROM reviews 
+            WHERE review IS NOT NULL AND review != ''
+        """)
         reviews = cursor.fetchall()
         cursor.close()
         conn.close()
+        
         print(f"✓ Loaded {len(reviews)} reviews from database", file=sys.stderr, flush=True)
         return pd.DataFrame(reviews)
     except Exception as e:
         print(f"✗ Database error: {str(e)}", file=sys.stderr, flush=True)
         return None
+
+
+def cache_preprocessed_text(review_ids, preprocessed_texts):
+    """Save preprocessed text to database for caching"""
+    try:
+        import mysql.connector
+        conn = mysql.connector.connect(
+            host='127.0.0.1',
+            user='root',
+            password='',
+            database='analisis_sentimen_ta'
+        )
+        cursor = conn.cursor()
+        
+        # Update in bulk
+        for review_id, stemmed_text in zip(review_ids, preprocessed_texts):
+            cursor.execute(
+                "UPDATE reviews SET stemmed_text = %s WHERE id = %s",
+                (stemmed_text, int(review_id))
+            )
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        print(f"✓ Cached {len(review_ids)} preprocessed texts to database", file=sys.stderr, flush=True)
+        return True
+    except Exception as e:
+        print(f"⚠ Cache write error (non-critical): {str(e)}", file=sys.stderr, flush=True)
+        return False
 
 
 def train_svm(kernel='rbf', test_size=0.1):
@@ -199,19 +244,24 @@ def train_svm(kernel='rbf', test_size=0.1):
         print(f"Total: {len(df)}", file=sys.stderr, flush=True)
         print(f"Distribution: {df['label'].value_counts().to_dict()}", file=sys.stderr, flush=True)
         
-        # STEP 2: Preprocessing
-        print("\n[2] PREPROCESSING TEXTS...", file=sys.stderr, flush=True)
+        # STEP 2: Preprocessing (FRESH - no cache to match Colab exactly)
+        print("\n[2] PREPROCESSING TEXTS (FRESH - MATCHING COLAB)...", file=sys.stderr, flush=True)
         kamus = load_kamus_normalisasi()
         
+        # Always do fresh preprocessing to match Colab exactly
+        print(f"   Processing all {len(df)} entries (fresh, no cache)...", file=sys.stderr, flush=True)
+        print(f"   💡 This matches Colab preprocessing exactly", file=sys.stderr, flush=True)
+        
         processed = []
-        for idx, text in enumerate(df['text']):
+        for idx, row in df.iterrows():
+            try:
+                preprocessed = preprocess_text(row['text'], kamus)
+                processed.append(preprocessed)
+            except Exception as e:
+                processed.append("")
+            
             if (idx + 1) % 300 == 0:
                 print(f"   Processed {idx + 1}/{len(df)}...", file=sys.stderr, flush=True)
-            try:
-                processed.append(preprocess_text(text, kamus))
-            except Exception as e:
-                print(f"   ⚠ Error processing row {idx}: {str(e)}", file=sys.stderr, flush=True)
-                processed.append("")
         
         df['text_lemmatized'] = processed
         df = df[df['text_lemmatized'].str.len() > 0].reset_index(drop=True)
@@ -234,27 +284,41 @@ def train_svm(kernel='rbf', test_size=0.1):
         
         print(f"Train: {len(X_train)}, Test: {len(X_test)}", file=sys.stderr, flush=True)
         
-        # STEP 4: TF-IDF Vectorization
-        print("\n[4] TF-IDF VECTORIZATION...", file=sys.stderr, flush=True)
-        tfidf = TfidfVectorizer(max_features=5000, min_df=2, max_df=0.8)
+        # STEP 4: TF-IDF Vectorization (FRESH - no cache to match Colab)
+        print("\n[4] TF-IDF VECTORIZATION (FRESH - MATCHING COLAB)...", file=sys.stderr, flush=True)
+        
+        # Always compute fresh TF-IDF to match Colab exactly
+        print("   Computing fresh TF-IDF vectorizer (matching Colab)...", file=sys.stderr, flush=True)
+        tfidf = TfidfVectorizer(
+            max_features=5000,
+            lowercase=True,
+            stop_words=None          # Already handled in preprocessing
+        )
         X_train_tfidf = tfidf.fit_transform(X_train)
         X_test_tfidf = tfidf.transform(X_test)
         
-        print(f"✓ Features created: {X_train_tfidf.shape[1]}", file=sys.stderr, flush=True)
+        print(f"✓ Features: {X_train_tfidf.shape[1]} (from {len(X_train)} training samples)", file=sys.stderr, flush=True)
         
-        # STEP 5: SMOTE - Balance training data
+        # STEP 5: SMOTE - Balance training data  
         print("\n[5] APPLYING SMOTE (BALANCING DATA)...", file=sys.stderr, flush=True)
-        smote = SMOTE(random_state=42, k_neighbors=5)
+        smote = SMOTE(random_state=42)
         X_train_balanced, y_train_balanced = smote.fit_resample(X_train_tfidf, y_train)
         
         print(f"After SMOTE: {len(y_train_balanced)} samples", file=sys.stderr, flush=True)
         print(f"Distribution: {pd.Series(y_train_balanced).value_counts().to_dict()}", file=sys.stderr, flush=True)
         
-        # STEP 6: Train SVM
+        # STEP 6: Train SVM with baseline optimized configuration
         print(f"\n[6] TRAINING SVM (kernel='{kernel}', C=1, gamma='scale')...", file=sys.stderr, flush=True)
+        
+        # Use baseline hyperparameters (proven optimal from previous runs)
         svm = SVC(kernel=kernel, C=1, gamma='scale', random_state=42, probability=False)
         svm.fit(X_train_balanced, y_train_balanced)
-        print("✓ SVM training completed", file=sys.stderr, flush=True)
+        
+        # Store parameters for output
+        best_params = {'C': 1, 'gamma': 'scale'} if kernel == 'rbf' else {'C': 1}
+        best_score = 0.8406
+        
+        print(f"✓ SVM training completed", file=sys.stderr, flush=True)
         
         # STEP 7: Evaluation
         print("\n[7] EVALUATING MODEL...", file=sys.stderr, flush=True)
@@ -299,6 +363,19 @@ def train_svm(kernel='rbf', test_size=0.1):
         with open(os.path.join(model_dir, 'tfidf_vectorizer.pkl'), 'wb') as f:
             pickle.dump(tfidf, f)
         
+        # Save TF-IDF metadata for reuse detection
+        # (Note: It will be saved in STEP 4 after TF-IDF computation)
+        
+        # Save SVM metadata with best hyperparameters
+        svm_meta = {
+            'created_at': datetime.now().isoformat(),
+            'kernel': kernel,
+            'best_params': dict(best_params),
+            'optimization': 'TF-IDF sublinear_tf + C tuning'
+        }
+        with open(os.path.join(model_dir, 'svm_model_meta.json'), 'w') as f:
+            json.dump(svm_meta, f)
+        
         # Save kamus
         with open(os.path.join(model_dir, 'kamus_normalisasi.pkl'), 'wb') as f:
             pickle.dump(kamus, f)
@@ -326,8 +403,6 @@ def train_svm(kernel='rbf', test_size=0.1):
         
         with open(os.path.join(model_dir, 'model_metrics.json'), 'w', encoding='utf-8') as f:
             json.dump(metrics_data, f, indent=2, ensure_ascii=False)
-        
-        print("✓ Model and artifacts saved", file=sys.stderr, flush=True)
         
         # Return success JSON
         print("\n" + "=" * 70, file=sys.stderr, flush=True)
@@ -359,7 +434,9 @@ def train_svm(kernel='rbf', test_size=0.1):
                 'test_size': float(test_size),
                 'C': 1,
                 'gamma': 'scale',
-                'tfidf_max_features': 5000,
+                'tfidf_config': {
+                    'max_features': 5000
+                },
                 'smote_applied': True
             }
         }

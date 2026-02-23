@@ -50,7 +50,8 @@ class ClassificationController extends Controller
                     'recall' => floatval($eval['recall_weighted'] ?? 0),
                     'f1_score' => floatval($eval['f1_weighted'] ?? 0),
                     'per_class_metrics' => $eval['per_class_metrics'] ?? [],
-                    'classes' => $eval['classes'] ?? [],
+                    'classes' => $eval['classes'] ?? ['Negatif', 'Netral', 'Positif'],
+                    'confusion_matrix' => $eval['confusion_matrix'] ?? [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
                     'timestamp' => $metricsData['timestamp'] ?? null,
                     'cross_validation' => $metricsData['cross_validation'] ?? null
                 ]
@@ -220,41 +221,122 @@ class ClassificationController extends Controller
                 throw new Exception('Python tidak ditemukan');
             }
 
-            $scriptPath = base_path('scripts/train_model_simplified.py');
+            // Use EXACT COLAB training script for reproducibility
+            $scriptPath = base_path('scripts/train_model_colab_exact.py');
             if (!file_exists($scriptPath)) {
                 throw new Exception('Training script tidak ditemukan');
             }
 
-            // Build command with proper escaping
-            $pythonCmdEscaped = '"' . str_replace('/', '\\', $pythonCmd) . '"';
-            $scriptPathEscaped = '"' . str_replace('/', '\\', $scriptPath) . '"';
+            // Build command with proper escaping and UTF-8 chcp
+            $pythonCmdEscaped = str_replace('/', '\\', $pythonCmd);
+            $scriptPathEscaped = str_replace('/', '\\', $scriptPath);
             
-            $cmd = "{$pythonCmdEscaped} {$scriptPathEscaped} --kernel {$validated['kernel']} --test_size {$validated['test_size']} 2>&1";
+            // Use full path with quotes
+            $cmd = "chcp 65001 > nul && \"{$pythonCmdEscaped}\" \"{$scriptPathEscaped}\" --kernel {$validated['kernel']} --test_size {$validated['test_size']}";
 
-            $output = shell_exec($cmd);
+            // Use proc_open for better output handling
+            $descriptorspec = array(
+                0 => array("pipe", "r"),
+                1 => array("pipe", "w"),
+                2 => array("pipe", "w")
+            );
+
+            $process = proc_open($cmd, $descriptorspec, $pipes, base_path(), null);
+            
+            if (!is_resource($process)) {
+                throw new Exception('Tidak bisa menjalankan Python script');
+            }
+
+            // Close stdin
+            fclose($pipes[0]);
+
+            // Read stdout
+            $output = stream_get_contents($pipes[1]);
+            fclose($pipes[1]);
+
+            // Read stderr for debugging
+            $stderr = stream_get_contents($pipes[2]);
+            fclose($pipes[2]);
+
+            $return_value = proc_close($process);
+
             $output = trim($output);
+            $stderr = trim($stderr);
 
-            if (!$output) {
+            // Log stderr for debugging
+            if ($stderr) {
+                Log::debug('Python stderr output', ['stderr' => substr($stderr, 0, 1000)]);
+            }
+
+            if (!$output && !$stderr) {
                 throw new Exception('Python script tidak menghasilkan output');
             }
 
-            // Find JSON in output (could have debug text before it)
-            $jsonStart = strpos($output, '{');
-            if ($jsonStart === false) {
-                Log::error('No JSON found in output', ['output' => substr($output, 0, 500)]);
-                throw new Exception('Output Python bukan JSON format');
+            // Try to find JSON in output - search for complete JSON objects
+            $result = null;
+            
+            // First try: parse output as JSON directly
+            $decoded = json_decode($output, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $result = $decoded;
+            } else {
+                // Second try: find JSON object within output
+                $jsonStart = strpos($output, '{');
+                if ($jsonStart !== false) {
+                    // Try to find the matching closing brace
+                    $braceCount = 0;
+                    $inString = false;
+                    $escaped = false;
+                    
+                    for ($i = $jsonStart; $i < strlen($output); $i++) {
+                        $char = $output[$i];
+                        
+                        if ($escaped) {
+                            $escaped = false;
+                            continue;
+                        }
+                        
+                        if ($char === '\\') {
+                            $escaped = true;
+                            continue;
+                        }
+                        
+                        if ($char === '"' && !$escaped) {
+                            $inString = !$inString;
+                            continue;
+                        }
+                        
+                        if (!$inString) {
+                            if ($char === '{') {
+                                $braceCount++;
+                            } elseif ($char === '}') {
+                                $braceCount--;
+                                if ($braceCount === 0) {
+                                    $json = substr($output, $jsonStart, $i - $jsonStart + 1);
+                                    $decoded = json_decode($json, true);
+                                    if (json_last_error() === JSON_ERROR_NONE) {
+                                        $result = $decoded;
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
-            $json = substr($output, $jsonStart);
-            $result = json_decode($json, true);
-
-            if (!is_array($result) || json_last_error() !== JSON_ERROR_NONE) {
-                Log::error('JSON decode failed', ['error' => json_last_error_msg(), 'json' => substr($json, 0, 200)]);
-                throw new Exception('Gagal parse JSON dari Python');
+            if (!is_array($result)) {
+                Log::error('JSON decode failed', [
+                    'output_length' => strlen($output),
+                    'output_sample' => substr($output, 0, 500),
+                    'stderr_sample' => substr($stderr, 0, 500),
+                    'return_value' => $return_value
+                ]);
+                throw new Exception('Gagal parse JSON dari Python - Output format tidak valid');
             }
 
             if (!isset($result['success']) || !$result['success']) {
-                throw new Exception($result['error'] ?? 'Training gagal');
+                throw new Exception($result['error'] ?? 'Training gagal - ' . json_encode($result));
             }
 
             $eval = $result['evaluation_result'] ?? [];
@@ -718,7 +800,7 @@ class ClassificationController extends Controller
                 return response()->json([
                     'success' => true,
                     'data' => [
-                        'cm' => [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
+                        'confusion_matrix' => [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
                         'classes' => ['Negatif', 'Netral', 'Positif'],
                         'message' => 'No trained model found'
                     ]
@@ -738,7 +820,7 @@ class ClassificationController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'cm' => $cm,
+                    'confusion_matrix' => $cm,
                     'classes' => $classes,
                     'kernel' => $metricsData['kernel'] ?? 'rbf',
                     'timestamp' => $metricsData['timestamp'] ?? null
@@ -841,5 +923,93 @@ class ClassificationController extends Controller
         
         Log::error('No Python executable found in any path');
         return null;
+    }
+
+    /**
+     * Get word frequency data for word cloud visualization
+     */
+    public function getWordCloud()
+    {
+        try {
+            // Get all preprocessed reviews (stemmed)
+            $reviews = Review::whereNotNull('stemming')
+                ->where('stemming', '!=', '')
+                ->pluck('stemming')
+                ->toArray();
+
+            if (empty($reviews)) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'words' => [],
+                        'message' => 'No preprocessed reviews found'
+                    ]
+                ]);
+            }
+
+            // Count word frequencies
+            $wordFreq = [];
+            $stopwords = $this->getStopwords();
+
+            foreach ($reviews as $stemmed) {
+                $words = explode(' ', trim($stemmed));
+                foreach ($words as $word) {
+                    $word = trim($word);
+                    if (!empty($word) && strlen($word) > 2 && !in_array($word, $stopwords)) {
+                        $wordFreq[$word] = ($wordFreq[$word] ?? 0) + 1;
+                    }
+                }
+            }
+
+            // Sort by frequency and get top words
+            arsort($wordFreq);
+            $topWords = array_slice($wordFreq, 0, 50, true);
+
+            // Transform to array format for frontend
+            $words = [];
+            $maxFreq = max($topWords);
+            foreach ($topWords as $word => $freq) {
+                $words[] = [
+                    'text' => $word,
+                    'frequency' => $freq,
+                    'size' => max(12, min(48, 12 + ($freq / $maxFreq) * 36))
+                ];
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'words' => $words,
+                    'total_unique_words' => count($wordFreq),
+                    'total_reviews' => count($reviews)
+                ]
+            ]);
+
+        } catch (Exception $e) {
+            Log::error('Error getting word cloud data', [
+                'message' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving word cloud data'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get Indonesian stopwords
+     */
+    private function getStopwords()
+    {
+        $stopwords = [
+            'yang', 'dan', 'di', 'ke', 'dari', 'untuk', 'pada', 'is', 'the', 'a', 'an', 'as', 'at', 'be', 'by', 
+            'for', 'if', 'in', 'into', 'of', 'or', 'are', 'was', 'been', 'being', 'have', 'has', 'had', 'do', 
+            'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 
+            'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'what', 'which', 'who', 'when', 'where', 'why', 
+            'how', 'it', 'atau', 'jika', 'hanya', 'tidak', 'ada', 'dengan', 'telah', 'akan', 'oleh', 'juga', 
+            'saat', 'pun', 'hingga', 'karena', 'tentang', 'pada', 'paling', 'lalu', 'sebagai'
+        ];
+        return $stopwords;
     }
 }
