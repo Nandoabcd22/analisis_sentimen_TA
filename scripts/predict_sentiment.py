@@ -48,15 +48,16 @@ except LookupError:
 
 
 def load_model_and_vectorizer():
-    """Load trained SVM model, TF-IDF vectorizer, and kamus"""
+    """Load trained SVM model, TF-IDF vectorizer, kamus, and stopwords"""
     model_dir = os.path.join(os.path.dirname(__file__), '..', 'storage', 'app', 'private')
     
     model_path = os.path.join(model_dir, 'svm_model.pkl')
     vectorizer_path = os.path.join(model_dir, 'tfidf_vectorizer.pkl')
     kamus_path = os.path.join(model_dir, 'kamus_normalisasi.pkl')
+    stopwords_path = os.path.join(model_dir, 'stopwords.pkl')
     
     if not os.path.exists(model_path) or not os.path.exists(vectorizer_path):
-        return None, None, {}
+        return None, None, {}, set()
     
     try:
         with open(model_path, 'rb') as f:
@@ -70,9 +71,21 @@ def load_model_and_vectorizer():
             with open(kamus_path, 'rb') as f:
                 kamus = pickle.load(f)
         
-        return model, vectorizer, kamus
+        # CRITICAL: Load stopwords from training, not recreate them
+        stop_words = set()
+        if os.path.exists(stopwords_path):
+            with open(stopwords_path, 'rb') as f:
+                stop_words = pickle.load(f)
+        else:
+            # Fallback: use NLTK stopwords if saved version not found
+            try:
+                stop_words = set(nltk.corpus.stopwords.words('indonesian'))
+            except:
+                pass
+        
+        return model, vectorizer, kamus, stop_words
     except Exception as e:
-        return None, None, {}
+        return None, None, {}, set()
 
 
 def case_folding(text):
@@ -115,65 +128,66 @@ def normalisasi_kata(tokens, kamus):
     return normalized_tokens
 
 
-def remove_stopwords(tokens):
-    """Step 5: Stopword Removal"""
-    try:
-        stopwords_indonesia = set(stopwords.words('indonesian'))
-    except:
-        stopwords_indonesia = {'yang', 'dan', 'di', 'ke', 'dari', 'untuk', 'pada', 'adalah'}
-    
-    return [token for token in tokens if token not in stopwords_indonesia]
+def remove_stopwords(tokens, stop_words):
+    """Step 5: Stopword Removal - uses exact stopwords from training"""
+    return [w.lower() for w in tokens if w.lower() not in stop_words]
 
 
-def stemming_tokens(tokens):
-    """Step 6: Stemming"""
-    factory = StemmerFactory()
-    stemmer = factory.create_stemmer()
-    
+def stemming_tokens(tokens, stemmer):
+    """Step 6: Stemming - uses provided stemmer instance"""
     stemmed = [stemmer.stem(token) for token in tokens]
     return " ".join(stemmed)
 
 
-def preprocess_input(text, kamus):
+def preprocess_input(text, kamus, stop_words, stemmer):
     """
-    Preprocess input text - SESUAI COLAB
-    Mengikuti pipeline yang sama dengan training
+    Preprocess input text - EXACT COLAB MATCH
+    Using exact preprocessing from training
+    Returns: (processed_text, debug_info)
     """
+    debug = {}
+    
     # Step 1: Case Folding
     text = case_folding(text)
+    debug['case_folding'] = text
     
     # Step 2: Cleaning
     text = clean_text(text)
+    debug['cleaning'] = text
     if not text.strip():
-        return ""
+        return "", debug
     
     # Step 3: Tokenization
     tokens = tokenize_text(text)
+    debug['tokenization'] = tokens
     if not tokens:
-        return ""
+        return "", debug
     
-    # Step 4: Normalisasi Kata
+    # Step 4: Normalisasi Kata (exact from training)
     tokens = normalisasi_kata(tokens, kamus)
+    debug['after_normalisasi'] = tokens
     
-    # Step 5: Stopword Removal
-    tokens = remove_stopwords(tokens)
+    # Step 5: Stopword Removal (with exact stopwords from training)
+    tokens = remove_stopwords(tokens, stop_words)
+    debug['after_stopword'] = tokens
     if not tokens:
-        return ""
+        return "", debug
     
-    # Step 6: Stemming
-    text_stemmed = stemming_tokens(tokens)
+    # Step 6: Stemming (exact from training)
+    text_stemmed = stemming_tokens(tokens, stemmer)
+    debug['stemmed'] = text_stemmed
     
-    return text_stemmed
+    return text_stemmed, debug
 
 
 def predict_sentiment(text):
     """
     Predict sentiment using trained SVM model with TF-IDF
-    Implementasi sesuai Colab: preprocess_input + transform + predict
+    EXACT match to training preprocessing
     """
     try:
-        # Load model dan vectorizer
-        model, vectorizer, kamus = load_model_and_vectorizer()
+        # Load model, vectorizer, kamus, and stopwords
+        model, vectorizer, kamus, stop_words = load_model_and_vectorizer()
         
         if model is None or vectorizer is None:
             return {
@@ -181,16 +195,26 @@ def predict_sentiment(text):
                 'error': 'Model tidak ditemukan. Silakan train model terlebih dahulu.'
             }
         
-        # Preprocess text dengan pipeline yang sama seperti training
-        processed_text = preprocess_input(text, kamus)
+        # Create stemmer instance
+        try:
+            stemmer = StemmerFactory().create_stemmer()
+        except:
+            return {
+                'success': False,
+                'error': 'Stemmer tidak tersedia'
+            }
+        
+        # Preprocess text dengan exact pipeline dari training
+        processed_text, debug_info = preprocess_input(text, kamus, stop_words, stemmer)
         
         if not processed_text:
             return {
                 'success': False,
-                'error': 'Text kosong setelah preprocessing'
+                'error': 'Text kosong setelah preprocessing',
+                'debug_info': debug_info
             }
         
-        # Transform menggunakan TF-IDF vectorizer
+        # Transform menggunakan TF-IDF vectorizer (exact dari training)
         X = vectorizer.transform([processed_text])
         
         # Make prediction
@@ -200,8 +224,11 @@ def predict_sentiment(text):
         probabilities = model.predict_proba(X)[0]
         confidence = float(np.max(probabilities))
         
-        # Get class labels
+        # Get class labels (sorted like training)
         classes = sorted(model.classes_.tolist())
+        
+        # Format confidence scores untuk setiap class
+        confidence_scores = {str(cls): float(prob) for cls, prob in zip(classes, probabilities)}
         
         return {
             'success': True,
@@ -209,7 +236,16 @@ def predict_sentiment(text):
             'processed_text': processed_text,
             'sentiment': str(prediction),
             'confidence': float(confidence),
-            'probabilities': {str(cls): float(prob) for cls, prob in zip(classes, probabilities)},
+            'probabilities': confidence_scores,
+            'debug_info': {
+                'case_folding': debug_info.get('case_folding', ''),
+                'cleaning': debug_info.get('cleaning', ''),
+                'tokenization': debug_info.get('tokenization', []),
+                'after_normalisasi': debug_info.get('after_normalisasi', []),
+                'after_stopword': debug_info.get('after_stopword', []),
+                'stemmed': debug_info.get('stemmed', ''),
+                'confidence_scores': confidence_scores
+            },
             'timestamp': datetime.now().isoformat()
         }
         
@@ -225,17 +261,24 @@ def predict_sentiment(text):
 def predict_interactive():
     """
     Interactive mode - Masukkan teks dan dapatkan prediksi
-    SESUAI COLAB: new_text = input("Masukkan teks baru: ")
+    EXACT COLAB match dengan preprocessing
     """
-    model, vectorizer, kamus = load_model_and_vectorizer()
+    model, vectorizer, kamus, stop_words = load_model_and_vectorizer()
     
     if model is None or vectorizer is None:
         print("❌ Error: Model tidak ditemukan!")
         print("Silakan jalankan train_model.py terlebih dahulu.")
         return
     
+    # Create stemmer
+    try:
+        stemmer = StemmerFactory().create_stemmer()
+    except:
+        print("❌ Error: Stemmer tidak tersedia")
+        return
+    
     print("\n" + "=" * 70)
-    print("SENTIMENT ANALYSIS PREDICTION SYSTEM")
+    print("SENTIMENT ANALYSIS PREDICTION SYSTEM (EXACT COLAB)")
     print("=" * 70)
     print("\nModel siap digunakan!")
     print(f"Classes: {sorted(model.classes_.tolist())}")
@@ -252,8 +295,8 @@ def predict_interactive():
             print("⚠ Teks tidak boleh kosong. Coba lagi!")
             continue
         
-        # Preprocessing
-        processed_text = preprocess_input(user_input, kamus)
+        # Preprocessing (EXACT from training)
+        processed_text, debug_info = preprocess_input(user_input, kamus, stop_words, stemmer)
         
         if not processed_text:
             print("⚠ Text kosong setelah preprocessing. Coba teks yang lain!")

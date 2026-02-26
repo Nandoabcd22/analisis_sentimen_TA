@@ -9,72 +9,15 @@
         <p>Lakukan training model SVM untuk klasifikasi sentimen menggunakan data yang sudah dipreprocessing.</p>
     </div>
 
-    <!-- Benchmark Comparison Section -->
-    <div class="section-card" style="background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%); border-left: 4px solid #4CAF50;">
-        <h3 style="margin: 0 0 15px 0; color: #1a1a1a; font-size: 16px;">✅ EXACT COLAB Replication - Ready for Thesis Defense</h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-            <div style="background: white; padding: 15px; border-radius: 6px; border-left: 3px solid #4CAF50;">
-                <div style="font-size: 12px; color: #666; margin-bottom: 8px; font-weight: 600;">🚀 Website App (EXACT)</div>
-                <div style="font-size: 28px; font-weight: 700; color: #4CAF50; margin-bottom: 5px;">84.32%</div>
-                <div style="font-size: 11px; color: #666;">EXACT COLAB CODE | Reproducible | Stable</div>
-            </div>
-            <div style="background: white; padding: 15px; border-radius: 6px; border-left: 3px solid #2196F3;">
-                <div style="font-size: 12px; color: #666; margin-bottom: 8px; font-weight: 600;">📊 Google Colab Baseline</div>
-                <div style="font-size: 28px; font-weight: 700; color: #2196F3; margin-bottom: 5px;">84.00%</div>
-                <div style="font-size: 11px; color: #666;">Reference implementation</div>
-            </div>
-            <div style="background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%); padding: 15px; border-radius: 6px; border-left: 3px solid #4CAF50;">
-                <div style="font-size: 12px; color: #1a1a1a; margin-bottom: 8px; font-weight: 600;">✅ Difference</div>
-                <div style="font-size: 28px; font-weight: 700; color: #1a1a1a; margin-bottom: 5px;">+0.32%</div>
-                <div style="font-size: 11px; color: #1a1a1a;">Negligible variance (within acceptable range)</div>
-            </div>
-        </div>
-        <div style="margin-top: 15px; padding: 12px; background: #f1f8e9; border-radius: 6px; border-left: 3px solid #4CAF50; font-size: 12px; color: #33691e;">
-            <strong>✅ SIAP UNTUK SIDANG:</strong> Menggunakan EXACT COLAB code dengan random_state=42 global lock. Hasil 84.32% stabil, reproducible, dan hanya 0.32% lebih tinggi dari baseline Colab (negligible difference). Data identik dengan Colab (1848 reviews: 893 positif, 775 netral, 180 negatif).
-        </div>
-    </div>
-
-    <!-- Cache Status Section -->
-    <div class="section-card" style="background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%); border-left: 4px solid #2196F3;">
-        <h3 style="margin: 0 0 15px 0; color: #1a1a1a; font-size: 16px;">⚡ Optimization Info - EXACT COLAB Approach</h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-            <div style="background: white; padding: 15px; border-radius: 6px; border-left: 3px solid #4CAF50;">
-                <div style="font-size: 12px; color: #666; margin-bottom: 8px; font-weight: 600;">🔄 Training Code</div>
-                <div style="font-size: 14px; font-weight: 700; color: #4CAF50; margin-bottom: 5px;">EXACT COLAB</div>
-                <div style="font-size: 11px; color: #666; background: #f1f8e9; padding: 6px; border-radius: 4px;">
-                    100% replika Google Colab | Fresh preprocessing | No caching | Reproducible
-                </div>
-            </div>
-            <div style="background: white; padding: 15px; border-radius: 6px; border-left: 3px solid #2196F3;">
-                <div style="font-size: 12px; color: #666; margin-bottom: 8px; font-weight: 600;">🎯 Reproducibility</div>
-                <div style="font-size: 14px; font-weight: 700; color: #2196F3; margin-bottom: 5px;">✅ CONFIRMED</div>
-                <div style="font-size: 11px; color: #666; background: #e3f2fd; padding: 6px; border-radius: 4px;">
-                    Tested 3x: 84.32% (stable)
-                </div>
-            </div>
-            <div style="background: white; padding: 15px; border-radius: 6px; border-left: 3px solid #ff9800;">
-                <div style="font-size: 12px; color: #666; margin-bottom: 8px; font-weight: 600;">⏱️ Training Time</div>
-                <div style="font-size: 18px; font-weight: 700; color: #ff9800;">~2-3 min</div>
-                <div style="font-size: 10px; color: #999; margin-top: 3px;">Fresh processing setiap kali</div>
-            </div>
-        </div>
-        <div style="margin-top: 15px; padding: 12px; background: white; border-radius: 6px; border-left: 3px solid #4CAF50; font-size: 12px;">
-            <strong>📋 Approach:</strong> Untuk memastikan hasil 100% match dengan Colab sidang, kami menggunakan EXACT COLAB code (tidak ada optimization caching). Hasil mereproduksi dengan stabil di 84.32% ± 0.01%. Ini LEBIH BAIK dari Colab 84% dan fully verifiable untuk defense paper.
-        </div>
-    </div>
-
     <!-- Training Control Section -->
     <div class="section-card">
         <h2 class="section-title">Parameter Training</h2>
         
         <div class="form-group">
-            <label class="form-label">Pilih Kernel SVM</label>
-            <select id="kernel-select" class="form-input">
-                <option value="rbf" selected>RBF (Radial Basis Function) - Default</option>
-                <option value="linear">Linear</option>
-                <option value="polynomial">Polynomial</option>
-                <option value="sigmoid">Sigmoid</option>
-            </select>
+            <label class="form-label">Kernel SVM</label>
+            <div style="padding: 12px 15px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; color: #333; font-weight: 500;">
+                ✅ RBF (Radial Basis Function) - Default
+            </div>
         </div>
 
         <div class="form-group">
@@ -90,6 +33,18 @@
     <!-- Training Progress Section -->
     <div id="progress-section" class="section-card" style="display: none;">
         <h2 class="section-title">Status Training</h2>
+        <div style="margin-bottom: 20px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                <div style="background: #f5f5f5; padding: 15px; border-radius: 6px; border-left: 3px solid #2196F3;">
+                    <div style="font-size: 12px; color: #666; font-weight: 600; margin-bottom: 5px;">⏳ Waktu Berjalan</div>
+                    <div id="elapsed-time" style="font-size: 20px; font-weight: 700; color: #2196F3;">0s</div>
+                </div>
+                <div style="background: #f5f5f5; padding: 15px; border-radius: 6px; border-left: 3px solid #4CAF50;">
+                    <div style="font-size: 12px; color: #666; font-weight: 600; margin-bottom: 5px;">📊 Tahap Proses</div>
+                    <div id="process-stage" style="font-size: 14px; font-weight: 600; color: #4CAF50;">Initializing...</div>
+                </div>
+            </div>
+        </div>
         <div class="progress-bar">
             <div class="progress-fill" id="progress-fill"></div>
         </div>
@@ -167,64 +122,131 @@
             </table>
         </div>
 
-        <!-- Confusion Matrix -->
+        <!-- Confusion Matrix & Word Cloud (Side by Side) -->
         <div class="section-card">
-            <h2 class="section-title">Confusion Matrix Heatmap</h2>
-            <div style="display: flex; justify-content: center;">
-                <canvas id="cm-canvas" style="border: 1px solid #ddd;"></canvas>
+            <h2 class="section-title" style="margin-bottom: 30px;">📊 Hasil Visualisasi</h2>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: start;">
+                <!-- Confusion Matrix -->
+                <div>
+                    <h3 style="font-size: 16px; font-weight: 600; color: #333; margin: 0 0 15px 0;">Confusion Matrix</h3>
+                    <div style="display: flex; justify-content: center; align-items: flex-start; gap: 30px; padding: 20px; background: #f9f9f9; border-radius: 6px;">
+                        <!-- Heatmap Container -->
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <!-- Y-axis label -->
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); font-weight: 600; font-size: 12px; color: #555; width: 25px; text-align: center;">Actual</div>
+                                <!-- Heatmap Grid -->
+                                <div style="display: inline-block;">
+                                    <!-- Header Row -->
+                                    <div style="display: flex; gap: 0; margin-bottom: 5px;">
+                                        <div style="width: 35px; height: 25px;"></div>
+                                        <div id="cm-header-0" style="width: 70px; height: 25px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; color: #333;">Negatif</div>
+                                        <div id="cm-header-1" style="width: 70px; height: 25px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; color: #333;">Netral</div>
+                                        <div id="cm-header-2" style="width: 70px; height: 25px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; color: #333;">Positif</div>
+                                    </div>
+                                    
+                                    <!-- Row 0 -->
+                                    <div style="display: flex; gap: 0; margin-bottom: 2px;">
+                                        <div id="cm-label-0" style="width: 35px; height: 70px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 11px; color: #333; background: #f5f5f5;">Negatif</div>
+                                        <div id="cm-00" style="width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; cursor: pointer; transition: transform 0.2s; border: 1px solid rgba(255,255,255,0.3);">0</div>
+                                        <div id="cm-01" style="width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; cursor: pointer; transition: transform 0.2s; border: 1px solid rgba(255,255,255,0.3);">0</div>
+                                        <div id="cm-02" style="width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; cursor: pointer; transition: transform 0.2s; border: 1px solid rgba(255,255,255,0.3);">0</div>
+                                    </div>
+                                    
+                                    <!-- Row 1 -->
+                                    <div style="display: flex; gap: 0; margin-bottom: 2px;">
+                                        <div id="cm-label-1" style="width: 35px; height: 70px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 11px; color: #333; background: #f5f5f5;">Netral</div>
+                                        <div id="cm-10" style="width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; cursor: pointer; transition: transform 0.2s; border: 1px solid rgba(255,255,255,0.3);">0</div>
+                                        <div id="cm-11" style="width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; cursor: pointer; transition: transform 0.2s; border: 1px solid rgba(255,255,255,0.3);">0</div>
+                                        <div id="cm-12" style="width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; cursor: pointer; transition: transform 0.2s; border: 1px solid rgba(255,255,255,0.3);">0</div>
+                                    </div>
+                                    
+                                    <!-- Row 2 -->
+                                    <div style="display: flex; gap: 0;">
+                                        <div id="cm-label-2" style="width: 35px; height: 70px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 11px; color: #333; background: #f5f5f5;">Positif</div>
+                                        <div id="cm-20" style="width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; cursor: pointer; transition: transform 0.2s; border: 1px solid rgba(255,255,255,0.3);">0</div>
+                                        <div id="cm-21" style="width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; cursor: pointer; transition: transform 0.2s; border: 1px solid rgba(255,255,255,0.3);">0</div>
+                                        <div id="cm-22" style="width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; cursor: pointer; transition: transform 0.2s; border: 1px solid rgba(255,255,255,0.3);">0</div>
+                                    </div>
+                                    
+                                    <!-- X-axis label -->
+                                    <div style="margin-top: 8px; text-align: center; font-weight: 600; font-size: 12px; color: #555; margin-left: 35px;">Predicted</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Color Bar Legend -->
+                        <div style="display: flex; flex-direction: column; gap: 8px; align-items: center;">
+                            <div style="font-weight: 600; font-size: 11px; color: #666; text-align: center; width: 25px;">Value</div>
+                            <div style="width: 25px; height: 200px; background: linear-gradient(to top, #0d47a1, #1565c0, #1976d2, #1e88e5, #2196f3, #42a5f5, #64b5f6, #81c784, #c8e6c9, #f0f4c3); border: 2px solid #999; border-radius: 3px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></div>
+                            <div style="font-size: 10px; color: #888; font-weight: 500;">Max</div>
+                            <div style="font-size: 10px; color: #888; font-weight: 500;">Min</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Word Cloud Visualization -->
+                <div>
+                    <h3 style="font-size: 16px; font-weight: 600; color: #333; margin: 0 0 15px 0;">Word Cloud</h3>
+                    <p style="color: #666; margin: 0 0 12px 0; font-size: 13px;">Kata-kata paling sering muncul</p>
+                    <div id="wordcloud-container" style="width: 100%; min-height: 350px; display: flex; align-items: center; justify-content: center; background: #f9f9f9; border-radius: 6px; border: 1px solid #e0e0e0; overflow: auto;">
+                        <div style="text-align: center; color: #999;">
+                            <p style="font-size: 13px;">📊 Word cloud akan ditampilkan setelah training selesai</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <table class="cm-table">
-                <thead>
-                    <tr>
-                        <th colspan="2">Predicted / Actual</th>
-                        <td colspan="3" style="text-align: center;">Predicted</td>
-                    </tr>
-                    <tr>
-                        <th colspan="2"></th>
-                        <td id="cm-header-0">Class 0</td>
-                        <td id="cm-header-1">Class 1</td>
-                        <td id="cm-header-2">Class 2</td>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td rowspan="3" style="writing-mode: vertical-rl; transform: rotate(180deg);">Actual</td>
-                        <td id="cm-label-0">Class 0</td>
-                        <td id="cm-00">0</td>
-                        <td id="cm-01">0</td>
-                        <td id="cm-02">0</td>
-                    </tr>
-                    <tr>
-                        <td id="cm-label-1">Class 1</td>
-                        <td id="cm-10">0</td>
-                        <td id="cm-11">0</td>
-                        <td id="cm-12">0</td>
-                    </tr>
-                    <tr>
-                        <td id="cm-label-2">Class 2</td>
-                        <td id="cm-20">0</td>
-                        <td id="cm-21">0</td>
-                        <td id="cm-22">0</td>
-                    </tr>
-                </tbody>
-            </table>
         </div>
 
-        <!-- Summary Section -->
-        <div class="section-card" id="summary-section" style="background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border-left: 4px solid #4CAF50; display: none;">
-            <h2 class="section-title" style="border-bottom-color: #4CAF50;">📊 Ringkasan Hasil Training</h2>
-            <div style="display: grid; grid-template-columns: 1fr; gap: 15px;">
-                <div style="background: white; padding: 15px; border-radius: 6px; border-left: 3px solid #4CAF50;">
-                    <div style="font-size: 12px; color: #666; margin-bottom: 8px; font-weight: 600;">✓ Model Status</div>
-                    <div id="summary-status" style="font-size: 14px; color: #2e7d32; font-weight: 600;">Model berhasil dilatih dan ready untuk production</div>
+        <!-- Sentiment Prediction Section -->
+        <div class="section-card">
+            <h2 class="section-title">🔮 Prediksi Sentimen</h2>
+            <p style="color: #666; margin: 0 0 20px 0; font-size: 14px;">Masukkan teks untuk memprediksi sentimen menggunakan model yang sudah dilatih.</p>
+            
+            <div class="form-group">
+                <label class="form-label">Masukkan Teks:</label>
+                <textarea id="predict-text" class="form-input" style="resize: vertical; min-height: 120px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;" placeholder="Contoh: Produk ini sangat bagus dan memuaskan!"></textarea>
+            </div>
+
+            <div class="form-group">
+                <button id="predict-btn" class="btn btn-primary">Prediksi Sentimen</button>
+            </div>
+
+            <!-- Prediction Results -->
+            <div id="prediction-result" style="display: none; margin-top: 30px;">
+                <div style="background: linear-gradient(135deg, #f5f5f5, #fafafa); padding: 25px; border-radius: 8px; border: 2px solid #e0e0e0;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                        <div>
+                            <div style="font-size: 12px; font-weight: 600; color: #2196F3; text-transform: uppercase; margin-bottom: 10px;">Prediksi Sentimen</div>
+                            <div id="predict-sentiment" style="font-size: 24px; font-weight: 700; color: #1a1a1a; padding: 15px; background: white; border-radius: 6px; text-align: center; border-left: 4px solid #2196F3;">-</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; font-weight: 600; color: #FF9800; text-transform: uppercase; margin-bottom: 10px;">Confidence Score</div>
+                            <div id="predict-confidence" style="font-size: 24px; font-weight: 700; color: #1a1a1a; padding: 15px; background: white; border-radius: 6px; text-align: center; border-left: 4px solid #FF9800;">-</div>
+                        </div>
+                    </div>
+
+                    <!-- Probability Distribution -->
+                    <div>
+                        <div style="font-size: 12px; font-weight: 600; color: #4CAF50; text-transform: uppercase; margin-bottom: 15px;">Distribusi Probabilitas Per Kelas</div>
+                        <div id="probability-bars" style="display: grid; gap: 12px;">
+                            <!-- Akan diisi oleh JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Input Text Used -->
+                    <div style="margin-top: 20px; padding: 15px; background: white; border-radius: 6px; border-left: 4px solid #9C27B0;">
+                        <div style="font-size: 12px; font-weight: 600; color: #666; text-transform: uppercase; margin-bottom: 8px;">Teks Input:</div>
+                        <div id="predict-input-text" style="font-size: 14px; color: #333; line-height: 1.6; font-style: italic;"></div>
+                    </div>
                 </div>
-                <div style="background: white; padding: 15px; border-radius: 6px; border-left: 3px solid #2196F3;">
-                    <div style="font-size: 12px; color: #666; margin-bottom: 8px; font-weight: 600;">📈 Performa</div>
-                    <div id="summary-performance" style="font-size: 14px; color: #1565c0; font-weight: 600;">Accuracy 84.78% - Exceed Colab baseline (84%)</div>
-                </div>
-                <div style="background: white; padding: 15px; border-radius: 6px; border-left: 3px solid #ff6f00;">
-                    <div style="font-size: 12px; color: #666; margin-bottom: 8px; font-weight: 600;">⏱️ Training Performance</div>
-                    <div id="summary-timing" style="font-size: 14px; color: #e65100; font-weight: 600;">Training selesai (dengan optimization: cache + SMOTE + balanced hyperparameters)</div>
+            </div>
+
+            <!-- Error Message -->
+            <div id="prediction-error" style="display: none; margin-top: 20px;">
+                <div style="background: #ffebee; padding: 15px; border-radius: 6px; border-left: 4px solid #f44336; color: #c62828;">
+                    <strong>⚠️ Error:</strong> <span id="error-message"></span>
                 </div>
             </div>
         </div>
@@ -515,6 +537,26 @@
 
 <script>
     const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    let trainingStartTime = null;
+    let elapsedTimeInterval = null;
+    let trainModelListenerAttached = false;  // Prevent duplicate listeners
+
+    function updateElapsedTime() {
+        if (trainingStartTime) {
+            const elapsed = Math.floor((Date.now() - trainingStartTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            
+            let timeString = '';
+            if (minutes > 0) {
+                timeString = `${minutes}m ${seconds}s`;
+            } else {
+                timeString = `${seconds}s`;
+            }
+            
+            document.getElementById('elapsed-time').textContent = timeString;
+        }
+    }
 
     // Check cache status on page load
     async function checkCacheStatus() {
@@ -583,11 +625,25 @@
     // Periodically update cache status
     setInterval(checkCacheStatus, 30000); // Every 30 seconds
 
-    // Train button
-    document.getElementById('train-btn').addEventListener('click', trainModel);
+    // Train button - attach event listener when DOM is ready (only once)
+    window.addEventListener('DOMContentLoaded', function() {
+        if (!trainModelListenerAttached) {
+            console.log('DOMContentLoaded event fired');
+            const trainBtn = document.getElementById('train-btn');
+            console.log('Train button element:', trainBtn);
+            if (trainBtn) {
+                trainBtn.addEventListener('click', trainModel);
+                trainModelListenerAttached = true;
+                console.log('Click event listener attached to train button (once)');
+            } else {
+                console.error('Train button not found!');
+            }
+        }
+    });
 
     async function trainModel() {
-        const kernel = document.getElementById('kernel-select').value;
+        console.log('trainModel function called');
+        const kernel = 'rbf';  // Fixed to RBF
         const testSize = 10; // Fixed 90:10 split (10% test, 90% train)
         
         const trainBtn = document.getElementById('train-btn');
@@ -597,11 +653,47 @@
         document.getElementById('progress-section').style.display = 'block';
         document.getElementById('results-section').style.display = 'none';
 
+        // Start elapsed time tracking
+        trainingStartTime = Date.now();
+        document.getElementById('elapsed-time').textContent = '0s';
+        
+        // Update elapsed time every 100ms
+        elapsedTimeInterval = setInterval(updateElapsedTime, 100);
+
         let progress = 0;
+        let elapsedSeconds = 0;
+        
+        const stages = [
+            { progress: 0, message: '🔄 Memuat data...' },
+            { progress: 15, message: '📝 Preprocessing...' },
+            { progress: 35, message: '⚙️ TF-IDF Vectorization...' },
+            { progress: 55, message: '⚖️ SMOTE Balancing...' },
+            { progress: 75, message: '🤖 SVM Training...' },
+            { progress: 90, message: '📊 Evaluasi & Saving...' }
+        ];
+        
+        let currentStageIndex = 0;
+
         const progressInterval = setInterval(() => {
-            progress = Math.min(progress + Math.random() * 20, 95);
-            updateProgress(progress, 'Processing...');
-        }, 400);
+            // Update stage message
+            for (let i = stages.length - 1; i >= 0; i--) {
+                if (progress >= stages[i].progress) {
+                    if (i !== currentStageIndex) {
+                        currentStageIndex = i;
+                        document.getElementById('process-stage').textContent = stages[i].message;
+                    }
+                    break;
+                }
+            }
+            
+            // Faster progress increment for parallel processing
+            if (progress < 85) {
+                progress += Math.random() * 5 + 1;  // Increased from 3+0.5
+                progress = Math.min(progress, 84);
+            }
+            
+            updateProgress(progress, 'Processing');
+        }, 300);  // Faster updates (was 400)
 
         try {
             const response = await fetch('/api/train-model', {
@@ -619,24 +711,60 @@
             const data = await response.json();
 
             clearInterval(progressInterval);
+            clearInterval(elapsedTimeInterval);
+            
             updateProgress(100, 'Completed!');
-
+            document.getElementById('process-stage').textContent = '✅ Selesai!';
+            
+            // Calculate total time with validation
+            let timeString = '0s';
+            if (trainingStartTime && typeof trainingStartTime === 'number' && trainingStartTime > 0) {
+                const elapsedMs = Date.now() - trainingStartTime;
+                // Sanity check: elapsed time should be positive and less than 1 hour (3600000ms)
+                if (elapsedMs > 0 && elapsedMs < 3600000) {
+                    const totalTime = Math.floor(elapsedMs / 1000);
+                    const minutes = Math.floor(totalTime / 60);
+                    const seconds = totalTime % 60;
+                    timeString = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+                } else {
+                    // Fallback: extract from DOM elapsed-time display
+                    const elapsedDisplay = document.getElementById('elapsed-time')?.textContent || '0s';
+                    timeString = elapsedDisplay;
+                }
+            }
+            
             if (data.success) {
-                displayResults(data.data);
+                console.log('Training successful, data:', data.data);
+                
+                // Display results section immediately (fastest)
                 document.getElementById('results-section').style.display = 'block';
-                document.getElementById('summary-section').style.display = 'block';
+                
+                // Display metrics & matrix instantly
+                displayResults(data.data);
+                
+                // Load wordcloud in background (don't wait for it)
+                if (data.data.wordcloud) {
+                    console.log('WordCloud found in response, displaying...');
+                    displayWordCloudImage(data.data.wordcloud);
+                } else {
+                    console.log('No wordcloud in response, attempting API fetch...');
+                    loadWordCloud(); // Async - will update when ready
+                }
+                
                 checkCacheStatus(); // Update cache status for next training
-                alert('✓ Model training berhasil!\n\nHasil: 84.78% Accuracy\n(Exceed Colab baseline: 84%)');
+                alert('✓ Model training berhasil!\n\nWaktu: ' + timeString + '\n\n🚀 OPTIMIZED: Faster with parallel SVM training!');
             } else {
                 alert('✗ Error: ' + (data.message || 'Training failed'));
             }
         } catch (error) {
             clearInterval(progressInterval);
+            clearInterval(elapsedTimeInterval);
             console.error('Error:', error);
             alert('✗ Error: ' + error.message);
         } finally {
             trainBtn.disabled = false;
             trainBtn.textContent = 'Mulai Training';
+            trainingStartTime = null;
         }
     }
 
@@ -699,64 +827,275 @@
             }
         }
 
-        // Draw heatmap
-        drawConfusionMatrixHeatmap(cm, classes);
+        // If confusion matrix image available from Python, display it
+        if (data.confusion_matrix_image) {
+            displayConfusionMatrixImage(data.confusion_matrix_image);
+        } else {
+            // Fallback: display HTML heatmap
+            updateConfusionMatrixHeatmap(cm);
+        }
     }
 
-    function drawConfusionMatrixHeatmap(cm, classes) {
-        const canvas = document.getElementById('cm-canvas');
-        const ctx = canvas.getContext('2d');
-        const cellSize = 80;
-        const padding = 70;
-        const fontSize = 14;
+    function displayConfusionMatrixImage(base64Image) {
+        try {
+            // Find the CM container (the first column in grid)
+            const cmContainer = document.querySelector('#wordcloud-container').parentElement.previousElementSibling;
+            if (!cmContainer) {
+                console.log('CM container not found, using HTML heatmap fallback');
+                return;
+            }
 
-        canvas.width = 3 * cellSize + padding;
-        canvas.height = 3 * cellSize + padding + 20;
+            // Get the flex container inside CM section
+            const flexContainer = cmContainer.querySelector('div[style*="display: flex"]');
+            if (!flexContainer) {
+                console.log('Flex container not found');
+                return;
+            }
 
-        const maxVal = Math.max(...cm.flat());
+            // Create image element
+            const img = document.createElement('img');
+            img.src = 'data:image/png;base64,' + base64Image;
+            img.style.cssText = 'max-width: 100%; height: auto; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);';
+            img.alt = 'Confusion Matrix Heatmap';
 
-        // Draw background
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Clear and replace with image
+            flexContainer.innerHTML = '';
+            flexContainer.appendChild(img);
+            flexContainer.style.justifyContent = 'center';
+            flexContainer.style.padding = '20px';
 
-        ctx.font = 'bold ' + fontSize + 'px Arial';
-        ctx.fillStyle = '#666';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-
-        // Draw top labels
-        for (let i = 0; i < 3; i++) {
-            ctx.fillText(classes[i], padding + (i + 0.5) * cellSize, 25);
+            console.log('✓ Confusion matrix image displayed');
+        } catch (error) {
+            console.error('Error displaying CM image:', error);
         }
+    }
 
-        // Draw left labels
-        for (let i = 0; i < 3; i++) {
-            ctx.fillText(classes[i], 35, padding + (i + 0.5) * cellSize);
-        }
-
-        // Draw cells
+    function updateConfusionMatrixHeatmap(cm) {
+        // Find max value for color scaling
+        const maxVal = Math.max(...cm.flat(), 1);
+        
+        // Better color gradient: white → light blue → blue → dark blue
+        const getHeatmapColor = (value) => {
+            const normalized = value / maxVal; // 0 to 1
+            
+            // Define gradient stops (like matplotlib 'Blues')
+            const stops = [
+                { pos: 0.0, color: [240, 248, 255] },      // alice blue
+                { pos: 0.2, color: [173, 216, 230] },      // light blue
+                { pos: 0.4, color: [135, 206, 235] },      // sky blue
+                { pos: 0.6, color: [65, 165, 245] },       // blue
+                { pos: 0.8, color: [21, 101, 192] },       // darker blue
+                { pos: 1.0, color: [13, 71, 161] }         // dark blue
+            ];
+            
+            // Find the two stops to interpolate between
+            let lower = stops[0];
+            let upper = stops[stops.length - 1];
+            
+            for (let i = 0; i < stops.length - 1; i++) {
+                if (normalized >= stops[i].pos && normalized <= stops[i + 1].pos) {
+                    lower = stops[i];
+                    upper = stops[i + 1];
+                    break;
+                }
+            }
+            
+            // Interpolate between lower and upper
+            const range = upper.pos - lower.pos;
+            const t = (normalized - lower.pos) / range;
+            
+            const r = Math.round(lower.color[0] + (upper.color[0] - lower.color[0]) * t);
+            const g = Math.round(lower.color[1] + (upper.color[1] - lower.color[1]) * t);
+            const b = Math.round(lower.color[2] + (upper.color[2] - lower.color[2]) * t);
+            
+            return `rgb(${r}, ${g}, ${b})`;
+        };
+        
+        const getTextColor = (value, maxVal) => {
+            const normalized = value / maxVal;
+            return normalized > 0.5 ? '#ffffff' : '#333333';
+        };
+        
+        // Apply heatmap to each cell
         for (let i = 0; i < 3; i++) {
             for (let j = 0; j < 3; j++) {
-                const x = padding + j * cellSize;
-                const y = padding + i * cellSize;
-                const value = cm[i][j];
-                const intensity = maxVal > 0 ? value / maxVal : 0;
-
-                // Cell background
-                ctx.fillStyle = `rgba(33, 150, 243, ${intensity * 0.7 + 0.1})`;
-                ctx.fillRect(x, y, cellSize, cellSize);
-
-                // Cell border
-                ctx.strokeStyle = '#ddd';
-                ctx.lineWidth = 1;
-                ctx.strokeRect(x, y, cellSize, cellSize);
-
-                // Value text
-                ctx.fillStyle = intensity > 0.5 ? 'white' : '#333';
-                ctx.font = 'bold 16px Arial';
-                ctx.fillText(value, x + cellSize / 2, y + cellSize / 2);
+                const cellId = 'cm-' + i + j;
+                const cellElement = document.getElementById(cellId);
+                const value = cm[i]?.[j] || 0;
+                
+                // Apply background color
+                const bgColor = getHeatmapColor(value);
+                cellElement.style.backgroundColor = bgColor;
+                cellElement.style.boxShadow = '0 1px 3px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.2)';
+                
+                // Apply text color for contrast
+                cellElement.style.color = getTextColor(value, maxVal);
+                
+                // Add hover effect
+                cellElement.style.cursor = 'pointer';
+                cellElement.onmouseover = function() {
+                    this.style.transform = 'scale(1.05)';
+                    this.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.2)';
+                };
+                cellElement.onmouseout = function() {
+                    this.style.transform = 'scale(1)';
+                    this.style.boxShadow = '0 1px 3px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.2)';
+                };
             }
         }
     }
-</script>
+
+    function loadWordCloud() {
+        fetch('/api/wordcloud-image', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': CSRF_TOKEN
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.data.image) {
+                console.log('Wordcloud image loaded');
+                displayWordCloudImage(data.data.image);
+            } else {
+                console.error('No wordcloud image:', data);
+                document.getElementById('wordcloud-container').innerHTML = 
+                    '<div style="text-align: center; padding: 40px; color: #999;"><p>⚠️ Wordcloud belum tersedia</p></div>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading wordcloud:', error);
+            document.getElementById('wordcloud-container').innerHTML = 
+                '<div style="text-align: center; padding: 40px; color: #999;"><p>⚠️ Error: ' + error.message + '</p></div>';
+        });
+    }
+
+    function displayWordCloudImage(base64Image) {
+        if (!base64Image) {
+            console.error('No base64 image provided');
+            document.getElementById('wordcloud-container').innerHTML = 
+                '<div style="text-align: center; padding: 40px; color: #999;"><p>⚠️ WordCloud generation gagal</p></div>';
+            return;
+        }
+        
+        const container = document.getElementById('wordcloud-container');
+        const img = document.createElement('img');
+        img.src = 'data:image/png;base64,' + base64Image;
+        img.style.maxWidth = '100%';
+        img.style.maxHeight = '600px';
+        img.style.borderRadius = '4px';
+        img.alt = 'Wordcloud Image';
+        
+        container.innerHTML = '';
+        container.appendChild(img);
+        console.log('WordCloud image displayed successfully');
+    }
+
+    // Sentiment Prediction Functions
+    window.addEventListener('DOMContentLoaded', function() {
+        const predictBtn = document.getElementById('predict-btn');
+        if (predictBtn) {
+            predictBtn.addEventListener('click', predictSentiment);
+        }
+    });
+
+    async function predictSentiment() {
+        const textInput = document.getElementById('predict-text').value.trim();
+        const predictBtn = document.getElementById('predict-btn');
+
+        if (!textInput) {
+            showPredictionError('Masukkan teks terlebih dahulu!');
+            return;
+        }
+
+        predictBtn.disabled = true;
+        predictBtn.textContent = 'Sedang Memprediksi...';
+        document.getElementById('prediction-error').style.display = 'none';
+        document.getElementById('prediction-result').style.display = 'none';
+
+        try {
+            const response = await fetch('/api/predict-sentiment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': CSRF_TOKEN
+                },
+                body: JSON.stringify({
+                    text: textInput
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                displayPredictionResult(data.data);
+            } else {
+                showPredictionError(data.message || 'Prediksi gagal');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showPredictionError(error.message);
+        } finally {
+            predictBtn.disabled = false;
+            predictBtn.textContent = 'Prediksi Sentimen';
+        }
+    }
+
+    function displayPredictionResult(data) {
+        console.log('Prediction result:', data);
+
+        // Display sentiment and confidence
+        const sentimentMap = {
+            'Negatif': '😢 Negatif',
+            'Netral': '😐 Netral',
+            'Positif': '😊 Positif',
+            0: '😢 Negatif',
+            1: '😐 Netral',
+            2: '😊 Positif'
+        };
+
+        const sentiment = sentimentMap[data.prediction] || 'Tidak Diketahui';
+        const confidence = (data.confidence * 100).toFixed(2);
+
+        document.getElementById('predict-sentiment').textContent = sentiment;
+        document.getElementById('predict-confidence').textContent = confidence + '%';
+        document.getElementById('predict-input-text').textContent = data.text;
+
+        // Display probability distribution
+        const probBarsContainer = document.getElementById('probability-bars');
+        probBarsContainer.innerHTML = '';
+
+        const classLabels = data.classes || ['Negatif', 'Netral', 'Positif'];
+        const probabilities = data.probabilities || [0, 0, 0];
+        const maxProb = Math.max(...probabilities);
+
+        const colors = ['#f44336', '#FF9800', '#4CAF50'];
+
+        for (let i = 0; i < classLabels.length; i++) {
+            const prob = probabilities[i];
+            const percent = (prob * 100).toFixed(2);
+            const isMaxProb = prob === maxProb;
+
+            const barHtml = `
+                <div style="display: grid; grid-template-columns: 100px 1fr 80px; gap: 15px; align-items: center;">
+                    <div style="font-size: 13px; font-weight: 600; color: #333;">${classLabels[i]}</div>
+                    <div style="background: #e0e0e0; height: 24px; border-radius: 4px; overflow: hidden; position: relative;">
+                        <div style="background: ${colors[i]}; height: 100%; width: ${percent}%; transition: width 0.3s ease; ${isMaxProb ? 'box-shadow: 0 0 8px ' + colors[i] + '80;' : ''}"></div>
+                    </div>
+                    <div style="text-align: right; font-size: 13px; font-weight: 600; color: ${colors[i]};">${percent}%</div>
+                </div>
+            `;
+
+            probBarsContainer.innerHTML += barHtml;
+        }
+
+        document.getElementById('prediction-result').style.display = 'block';
+    }
+
+    function showPredictionError(message) {
+        document.getElementById('error-message').textContent = message;
+        document.getElementById('prediction-error').style.display = 'block';
+    }</script>
+
 @endsection

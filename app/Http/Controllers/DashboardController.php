@@ -203,9 +203,9 @@ class DashboardController extends Controller
         foreach ($reviews->items() as $review) {
             $reviewsData[] = [
                 'id' => (int)$review->id,
-                'username' => (string)$review->username,
-                'review' => (string)$review->review,
-                'label' => (string)$review->label,
+                'username' => $this->cleanUtf8String((string)$review->username),
+                'review' => $this->cleanUtf8String((string)$review->review),
+                'label' => $this->cleanUtf8String((string)$review->label),
                 'created_at' => $review->created_at ? $review->created_at->format('Y-m-d H:i:s') : null,
             ];
         }
@@ -427,14 +427,32 @@ class DashboardController extends Controller
     }
     
     /**
+     * Clean invalid UTF-8 characters from string
+     */
+    private function cleanUtf8String($string)
+    {
+        if (!is_string($string)) {
+            return $string;
+        }
+
+        // Convert to array of bytes, remove invalid UTF-8 sequences
+        $string = mb_convert_encoding($string, 'UTF-8', 'UTF-8');
+        
+        // Alternative: Use iconv to strip invalid characters
+        // $string = iconv('UTF-8', 'UTF-8//IGNORE', $string);
+        
+        return $string;
+    }
+
+    /**
      * Extract data from row
      */
     private function extractRowData($row, $columnMapping, $rowNumber)
     {
         // Extract data with fallbacks for missing columns
-        $username = isset($columnMapping['username']) ? trim($row[$columnMapping['username']] ?? '') : 'Anonymous';
-        $review = isset($columnMapping['review']) ? trim($row[$columnMapping['review']] ?? '') : '';
-        $label = isset($columnMapping['label']) ? trim($row[$columnMapping['label']] ?? '') : '';
+        $username = isset($columnMapping['username']) ? $this->cleanUtf8String(trim($row[$columnMapping['username']] ?? '')) : 'Anonymous';
+        $review = isset($columnMapping['review']) ? $this->cleanUtf8String(trim($row[$columnMapping['review']] ?? '')) : '';
+        $label = isset($columnMapping['label']) ? $this->cleanUtf8String(trim($row[$columnMapping['label']] ?? '')) : '';
         
         // Validate required fields
         if (empty($review)) {
@@ -538,9 +556,9 @@ class DashboardController extends Controller
                     \Log::info("Processing result $idx: ID=" . $result['id']);
                     
                     $updated = Review::where('id', $result['id'])->update([
-                        'case_folding' => $result['case_folding'] ?? '',
-                        'cleansing'    => $result['cleansing'] ?? '',
-                        'normalisasi'  => $result['normalisasi'] ?? '',
+                        'case_folding' => $this->cleanUtf8String($result['case_folding'] ?? ''),
+                        'cleansing'    => $this->cleanUtf8String($result['cleansing'] ?? ''),
+                        'normalisasi'  => $this->cleanUtf8String($result['normalisasi'] ?? ''),
                         'tokenizing'   => is_array($result['tokenizing'] ?? null) ? json_encode($result['tokenizing']) : '[]',
                         'stopword'     => is_array($result['stopword'] ?? null) ? json_encode($result['stopword']) : '[]',
                         'stemming'     => is_array($result['stemming'] ?? null) ? json_encode($result['stemming']) : '[]',
@@ -1150,6 +1168,79 @@ class DashboardController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error applying SMOTE: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Clean all existing data from invalid UTF-8 characters
+     */
+    public function cleanDatabaseUtf8()
+    {
+        try {
+            \Log::info('Starting database UTF-8 cleaning...');
+            
+            $reviews = Review::all();
+            $cleanedCount = 0;
+            
+            foreach ($reviews as $review) {
+                $changes = [];
+                
+                // Clean all string fields
+                $cleanUsername = $this->cleanUtf8String($review->username);
+                if ($cleanUsername !== $review->username) {
+                    $changes['username'] = $cleanUsername;
+                }
+                
+                $cleanReview = $this->cleanUtf8String($review->review);
+                if ($cleanReview !== $review->review) {
+                    $changes['review'] = $cleanReview;
+                }
+                
+                $cleanLabel = $this->cleanUtf8String($review->label);
+                if ($cleanLabel !== $review->label) {
+                    $changes['label'] = $cleanLabel;
+                }
+                
+                $cleanCaseFolding = $this->cleanUtf8String($review->case_folding);
+                if ($cleanCaseFolding !== $review->case_folding) {
+                    $changes['case_folding'] = $cleanCaseFolding;
+                }
+                
+                $cleanCleansing = $this->cleanUtf8String($review->cleansing);
+                if ($cleanCleansing !== $review->cleansing) {
+                    $changes['cleansing'] = $cleanCleansing;
+                }
+                
+                $cleanNormalisasi = $this->cleanUtf8String($review->normalisasi);
+                if ($cleanNormalisasi !== $review->normalisasi) {
+                    $changes['normalisasi'] = $cleanNormalisasi;
+                }
+                
+                // Update if any changes
+                if (!empty($changes)) {
+                    $review->update($changes);
+                    $cleanedCount++;
+                }
+            }
+            
+            \Log::info("Database UTF-8 cleaning completed. Cleaned {$cleanedCount} records.");
+            
+            return response()->json([
+                'success' => true,
+                'message' => "Database cleaned! {$cleanedCount} records were updated.",
+                'data' => [
+                    'cleaned_records' => $cleanedCount,
+                    'total_records' => count($reviews)
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Database cleaning error: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error cleaning database: ' . $e->getMessage()
             ], 500);
         }
     }

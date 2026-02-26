@@ -16,6 +16,10 @@ imbalanced-learn>=0.8.0
 # Database
 mysql-connector-python>=8.0.0
 
+# Visualization
+wordcloud>=1.8.0
+Pillow>=8.3.0
+
 # Optional: Untuk Jupyter Notebook
 jupyter>=1.0.0
 matplotlib>=3.4.0

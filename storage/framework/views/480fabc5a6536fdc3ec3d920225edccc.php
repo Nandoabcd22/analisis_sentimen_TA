@@ -45,7 +45,10 @@
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
                 <h3 class="text-sm font-medium text-gray-900">Sedang memproses...</h3>
-                <p class="mt-1 text-sm text-gray-500" id="processingStatus">Harap tunggu sebentar.</p>
+                <p class="mt-2 text-sm text-gray-600" id="processingStatus">
+                    <span>Processing all data in batch mode...</span><br>
+                    <span class="text-blue-600 font-semibold">⏱ 0s</span>
+                </p>
                 <div class="mt-4 bg-gray-200 rounded-full h-2 w-48 mx-auto overflow-hidden">
                     <div id="progressBar" class="bg-blue-600 h-full transition-all duration-300" style="width: 0%"></div>
                 </div>
@@ -161,6 +164,26 @@
 let currentPage = 1;
 let entriesPerPage = 10;
 let allPreprocessedData = [];
+let preprocessingStartTime = null;
+let elapsedTimeInterval = null;
+
+function updateElapsedTime() {
+    if (preprocessingStartTime) {
+        const elapsed = Math.floor((Date.now() - preprocessingStartTime) / 1000);
+        const seconds = elapsed % 60;
+        const minutes = Math.floor(elapsed / 60);
+        
+        let timeString = '';
+        if (minutes > 0) {
+            timeString = `${minutes}m ${seconds}s`;
+        } else {
+            timeString = `${seconds}s`;
+        }
+        
+        document.getElementById('processingStatus').innerHTML = 
+            `<span>Processing all data in batch mode...</span><br><span class="text-blue-600 font-semibold">⏱ ${timeString}</span>`;
+    }
+}
 
 function showLoadingState() {
     document.getElementById('emptyState').classList.add('hidden');
@@ -197,9 +220,16 @@ async function preprocessData() {
     const preprocessBtn = document.getElementById('preprocessBtn');
     preprocessBtn.disabled = true;
     
+    // Start timer
+    preprocessingStartTime = Date.now();
+    document.getElementById('processingStatus').innerHTML = 
+        `<span>Processing all data in batch mode...</span><br><span class="text-blue-600 font-semibold">⏱ 0s</span>`;
+    
+    // Update elapsed time every 100ms
+    elapsedTimeInterval = setInterval(updateElapsedTime, 100);
+    
     try {
         console.log('Starting batch preprocessing of all data...');
-        document.getElementById('processingStatus').textContent = 'Processing all data in batch mode...';
         
         const response = await fetch('/preprocess-data', {
             method: 'POST',
@@ -215,7 +245,13 @@ async function preprocessData() {
         console.log('Preprocessing result:', result);
 
         if (response.ok && result.success) {
-            alert(`✅ Preprocessing Complete!\n${result.message}`);
+            // Calculate total time
+            const totalTime = Math.floor((Date.now() - preprocessingStartTime) / 1000);
+            const seconds = totalTime % 60;
+            const minutes = Math.floor(totalTime / 60);
+            let timeString = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+            
+            alert(`✅ Preprocessing Complete!\n${result.message}\n⏱ Total time: ${timeString}`);
             // Load preprocessed reviews after processing
             currentPage = 1;
             await loadPreprocessedReviews();
@@ -230,6 +266,12 @@ async function preprocessData() {
         showErrorState('Error', error.message || 'Preprocessing error occurred');
         alert('❌ Error: ' + (error.message || 'Preprocessing error'));
     } finally {
+        // Stop timer
+        if (elapsedTimeInterval) {
+            clearInterval(elapsedTimeInterval);
+            elapsedTimeInterval = null;
+        }
+        preprocessingStartTime = null;
         preprocessBtn.disabled = false;
     }
 }

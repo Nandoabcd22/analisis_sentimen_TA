@@ -63,6 +63,78 @@
         .navbar-menu a.active {
             color: #0066cc;
         }
+
+        .navbar-user {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .user-name {
+            font-size: 13px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .logout-btn {
+            padding: 8px 16px;
+            background: #2196F3 100%;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .logout-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .auth-links {
+            display: flex;
+            gap: 15px;
+        }
+
+        .auth-links a {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .auth-links a:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
         
         .main-container {
             display: flex;
@@ -109,12 +181,31 @@
     <nav class="navbar">
         <a href="<?php echo e(route('dashboard')); ?>" class="navbar-brand">ANALISIS SENTIMEN</a>
         <ul class="navbar-menu">
-            <li><a href="<?php echo e(route('dashboard')); ?>" class="<?php if(request()->routeIs('dashboard')): ?> active <?php endif; ?>">Dashboard</a></li>
-            <li><a href="<?php echo e(route('preprocessing')); ?>" class="<?php if(request()->routeIs('preprocessing')): ?> active <?php endif; ?>">Preprocessing</a></li>
-            <li><a href="<?php echo e(route('tfidf')); ?>" class="<?php if(request()->routeIs('tfidf')): ?> active <?php endif; ?>">TF-IDF</a></li>
-            <li><a href="<?php echo e(route('klasifikasi')); ?>" class="<?php if(request()->routeIs('klasifikasi')): ?> active <?php endif; ?>">Klasifikasi</a></li>
-            <li><a href="<?php echo e(route('hasil-laporan')); ?>" class="<?php if(request()->routeIs('hasil-laporan')): ?> active <?php endif; ?>">Hasil Dan Laporan</a></li>
+            <?php if(auth()->guard()->check()): ?>
+                <li><a href="<?php echo e(route('dashboard')); ?>" class="<?php if(request()->routeIs('dashboard')): ?> active <?php endif; ?>">Dashboard</a></li>
+                <li><a href="<?php echo e(route('preprocessing')); ?>" class="<?php if(request()->routeIs('preprocessing')): ?> active <?php endif; ?>">Preprocessing</a></li>
+                <li><a href="<?php echo e(route('tfidf')); ?>" class="<?php if(request()->routeIs('tfidf')): ?> active <?php endif; ?>">TF-IDF</a></li>
+                <li><a href="<?php echo e(route('klasifikasi')); ?>" class="<?php if(request()->routeIs('klasifikasi')): ?> active <?php endif; ?>">Klasifikasi</a></li>
+            <?php endif; ?>
         </ul>
+        
+        <?php if(auth()->guard()->check()): ?>
+            <div class="navbar-user">
+                <div class="user-info">
+                    <div class="user-avatar"><?php echo e(substr(Auth::user()->name, 0, 1)); ?></div>
+                    <div class="user-name"><?php echo e(Auth::user()->name); ?></div>
+                </div>
+                <form action="<?php echo e(route('logout')); ?>" method="POST" style="margin: 0; flex-shrink: 0;">
+                    <?php echo csrf_field(); ?>
+                    <button type="submit" class="logout-btn">🚪 Logout</button>
+                </form>
+            </div>
+        <?php else: ?>
+            <div class="auth-links">
+                <a href="<?php echo e(route('login')); ?>">Login</a>
+                <a href="<?php echo e(route('register')); ?>">Register</a>
+            </div>
+        <?php endif; ?>
     </nav>
 
     <!-- Main Content -->
