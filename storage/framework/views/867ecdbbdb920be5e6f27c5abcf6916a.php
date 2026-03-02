@@ -197,7 +197,7 @@
                 </div>
                 <form action="<?php echo e(route('logout')); ?>" method="POST" style="margin: 0; flex-shrink: 0;">
                     <?php echo csrf_field(); ?>
-                    <button type="submit" class="logout-btn">🚪 Logout</button>
+                    <button type="submit" class="logout-btn">Logout</button>
                 </form>
             </div>
         <?php else: ?>

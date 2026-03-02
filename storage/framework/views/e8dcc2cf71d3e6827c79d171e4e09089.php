@@ -246,7 +246,7 @@
             <!-- Error Message -->
             <div id="prediction-error" style="display: none; margin-top: 20px;">
                 <div style="background: #ffebee; padding: 15px; border-radius: 6px; border-left: 4px solid #f44336; color: #c62828;">
-                    <strong>⚠️ Error:</strong> <span id="error-message"></span>
+                    <strong>⚠️ Gagal:</strong> <span id="error-message"></span>
                 </div>
             </div>
         </div>
@@ -752,15 +752,15 @@
                 }
                 
                 checkCacheStatus(); // Update cache status for next training
-                alert('✓ Model training berhasil!\n\nWaktu: ' + timeString + '\n\n🚀 OPTIMIZED: Faster with parallel SVM training!');
+                alert('✓ Model training berhasil!\n\nWaktu: ' + timeString + '\n\n🚀 OPTIMIZED: Pelatihan SVM lebih cepat dengan parallelisasi!');
             } else {
-                alert('✗ Error: ' + (data.message || 'Training failed'));
+                alert('✗ Gagal: ' + (data.message || 'Training gagal'));
             }
         } catch (error) {
             clearInterval(progressInterval);
             clearInterval(elapsedTimeInterval);
             console.error('Error:', error);
-            alert('✗ Error: ' + error.message);
+            alert('✗ Gagal: ' + error.message);
         } finally {
             trainBtn.disabled = false;
             trainBtn.textContent = 'Mulai Training';
@@ -967,7 +967,7 @@
         .catch(error => {
             console.error('Error loading wordcloud:', error);
             document.getElementById('wordcloud-container').innerHTML = 
-                '<div style="text-align: center; padding: 40px; color: #999;"><p>⚠️ Error: ' + error.message + '</p></div>';
+                '<div style="text-align: center; padding: 40px; color: #999;"><p>⚠️ Gagal: ' + error.message + '</p></div>';
         });
     }
 

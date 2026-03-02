@@ -251,20 +251,20 @@ async function preprocessData() {
             const minutes = Math.floor(totalTime / 60);
             let timeString = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
             
-            alert(`✅ Preprocessing Complete!\n${result.message}\n⏱ Total time: ${timeString}`);
+            alert(`✅ Preprocessing Selesai!\n${result.message}\n⏱ Total waktu: ${timeString}`);
             // Load preprocessed reviews after processing
             currentPage = 1;
             await loadPreprocessedReviews();
         } else {
-            const errorMsg = result.message || 'Preprocessing failed';
+            const errorMsg = result.message || 'Preprocessing gagal';
             console.error('Preprocessing failed:', result);
-            showErrorState('Preprocessing Failed', errorMsg);
-            alert('❌ Error: ' + errorMsg);
+            showErrorState('Preprocessing Gagal', errorMsg);
+            alert('❌ Gagal: ' + errorMsg);
         }
     } catch (error) {
         console.error('Preprocessing error:', error);
-        showErrorState('Error', error.message || 'Preprocessing error occurred');
-        alert('❌ Error: ' + (error.message || 'Preprocessing error'));
+        showErrorState('Kesalahan', error.message || 'Terjadi kesalahan saat preprocessing');
+        alert('❌ Gagal: ' + (error.message || 'Terjadi kesalahan saat preprocessing'));
     } finally {
         // Stop timer
         if (elapsedTimeInterval) {

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'TF-IDF & Data Processing')
+@section('title', 'TF-IDF & SMOOTE')
 
 @section('content')
 <div class="content">
@@ -8,21 +8,17 @@
         <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl shadow-2xl p-8 text-white">
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-4xl font-bold tracking-tight mb-2">TF-IDF & Data Processing</h1>
-                    <p class="text-blue-100 text-lg">📊 Visualisasi Data, Pembagian Training/Testing, dan SMOTE. <strong>Note:</strong> TF-IDF sekarang dihitung saat training dan di-reuse otomatis untuk mencegah duplikasi.</p>
+                    <h1 class="text-4xl font-bold tracking-tight mb-2">TF-IDF & SMOTE</h1>
+                    <p class="text-blue-100 text-lg">Proses TF-IDF, pembagian data training/testing, dan implementasi SMOTE</p>
                 </div>
-                <div class="flex gap-3">
+                <div class="flex flex-wrap gap-3 justify-end">
                     <button id="process-tfidf-btn" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-blue-700 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+                        <span id="tfidf-icon"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg></span>
                         <span id="tfidf-text">Process TF-IDF</span>
                     </button>
                     <button id="apply-smote-btn" class="inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-green-700 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <span id="smote-icon"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></span>
                         <span id="smote-text">Apply SMOTE</span>
-                    </button>
-                    <button id="download-tfidf-btn" class="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-purple-700 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                        Download Results
                     </button>
                 </div>
             </div>
@@ -237,8 +233,11 @@ function drawOriginalChart(data) {
 document.getElementById('process-tfidf-btn').addEventListener('click', async function() {
     const btn = this;
     const textSpan = document.getElementById('tfidf-text');
+    const iconSpan = document.getElementById('tfidf-icon');
+    const originalHTML = btn.innerHTML;
     
     btn.disabled = true;
+    iconSpan.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
     textSpan.textContent = 'Processing...';
     
     try {
@@ -254,17 +253,17 @@ document.getElementById('process-tfidf-btn').addEventListener('click', async fun
         const result = await response.json();
         
         if (result.success) {
-            alert('TF-IDF processing completed successfully!');
+            alert('Pemrosesan TF-IDF berhasil!');
             loadTfidfResults();
         } else {
-            alert('Error: ' + result.message);
+            alert('Gagal: ' + result.message);
         }
     } catch (error) {
         console.error('TF-IDF processing error:', error);
-        alert('TF-IDF processing failed. Please try again.');
+        alert('Pemrosesan TF-IDF gagal. Silakan coba lagi.');
     } finally {
         btn.disabled = false;
-        textSpan.textContent = 'Process TF-IDF';
+        btn.innerHTML = originalHTML;
     }
 });
 
@@ -272,8 +271,11 @@ document.getElementById('process-tfidf-btn').addEventListener('click', async fun
 document.getElementById('apply-smote-btn').addEventListener('click', async function() {
     const btn = this;
     const textSpan = document.getElementById('smote-text');
+    const iconSpan = document.getElementById('smote-icon');
+    const originalHTML = btn.innerHTML;
     
     btn.disabled = true;
+    iconSpan.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
     textSpan.textContent = 'Applying SMOTE...';
     
     try {
@@ -289,18 +291,18 @@ document.getElementById('apply-smote-btn').addEventListener('click', async funct
         const result = await response.json();
         
         if (result.success) {
-            alert('SMOTE applied successfully!');
+            alert('SMOTE berhasil diterapkan!');
             updateSmoteStatus(result.data);
             drawSmoteChart(result.data);
         } else {
-            alert('Error: ' + result.message);
+            alert('Gagal: ' + result.message);
         }
     } catch (error) {
         console.error('SMOTE application error:', error);
-        alert('SMOTE application failed. Please try again.');
+        alert('Penerapan SMOTE gagal. Silakan coba lagi.');
     } finally {
         btn.disabled = false;
-        textSpan.textContent = 'Apply SMOTE';
+        btn.innerHTML = originalHTML;
     }
 });
 
@@ -549,10 +551,7 @@ function createPaginationButton(text, enabled, onClick, isActive = false) {
     return button;
 }
 
-// Download button handler
-document.getElementById('download-tfidf-btn').addEventListener('click', function() {
-    window.open('/api/tfidf-results?download=1', '_blank');
-});
+
 
 // Search functionality
 const searchInput = document.getElementById('search-input');
@@ -842,6 +841,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     .space-x-2 > * + * {
         margin-left: 0.5rem;
+    }
+
+    /* Loading spinner animation */
+    @keyframes spin {
+        from {
+            transform: rotate(0deg);
+        }
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .animate-spin {
+        animation: spin 1s linear infinite;
     }
 
     /* Grid utilities */
