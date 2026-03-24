@@ -161,6 +161,13 @@
 </div>
 
 <script>
+// Get CSRF token once at page load
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+// Store tokens data for modal display
+const tokenModalStore = {};
+let tokenModalCounter = 0;
+
 let currentPage = 1;
 let entriesPerPage = 10;
 let allPreprocessedData = [];
@@ -180,8 +187,18 @@ function updateElapsedTime() {
             timeString = `${seconds}s`;
         }
         
-        document.getElementById('processingStatus').innerHTML = 
-            `<span>Processing all data in batch mode...</span><br><span class="text-blue-600 font-semibold">⏱ ${timeString}</span>`;
+        const processingStatusEl = document.getElementById('processingStatus');
+        if (processingStatusEl) {
+            processingStatusEl.innerHTML = 
+                `<span class="text-blue-600 font-semibold">⏱ ${timeString}</span>`;
+            
+            // Update progress bar smoothly
+            const progressBar = document.getElementById('progressBar');
+            if (progressBar) {
+                const fakeProgress = Math.min(elapsed * 5 + 10, 85); // Smooth fake progress
+                progressBar.style.width = fakeProgress + '%';
+            }
+        }
     }
 }
 
@@ -222,19 +239,20 @@ async function preprocessData() {
     
     // Start timer
     preprocessingStartTime = Date.now();
-    document.getElementById('processingStatus').innerHTML = 
-        `<span>Processing all data in batch mode...</span><br><span class="text-blue-600 font-semibold">⏱ 0s</span>`;
+    const processingStatusEl = document.getElementById('processingStatus');
+    processingStatusEl.innerHTML = 
+        `<span>Checking cache & processing data...</span><br><span class="text-blue-600 font-semibold">⏱ 0s</span>`;
     
     // Update elapsed time every 100ms
     elapsedTimeInterval = setInterval(updateElapsedTime, 100);
     
     try {
-        console.log('Starting batch preprocessing of all data...');
+        console.log('Starting preprocessing (with cache check)...');
         
         const response = await fetch('/preprocess-data', {
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}',
+                'X-CSRF-TOKEN': csrfToken,
                 'Accept': 'application/json'
             }
         });
@@ -251,7 +269,7 @@ async function preprocessData() {
             const minutes = Math.floor(totalTime / 60);
             let timeString = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
             
-            alert(`✅ Preprocessing Selesai!\n${result.message}\n⏱ Total waktu: ${timeString}`);
+            alert(`✅ Preprocessing Selesai!\n⏱ Total waktu: ${timeString}`);
             // Load preprocessed reviews after processing
             currentPage = 1;
             await loadPreprocessedReviews();
@@ -395,7 +413,10 @@ function formatTokens(tokenStr) {
         });
         
         if (remaining > 0) {
-            result += `, <span class="text-blue-600 font-semibold cursor-pointer hover:underline" onclick="showTokenModal(event, ${JSON.stringify(tokens).replace(/"/g, '&quot;')})">+${remaining} more</span>]`;
+            // Store tokens in global object and pass ID to onclick
+            const tokenId = 'tokens_' + (++tokenModalCounter);
+            tokenModalStore[tokenId] = tokens;
+            result += `, <span class="text-blue-600 font-semibold cursor-pointer hover:underline" onclick="showTokenModal(event, '${tokenId}')">+${remaining} more</span>]`;
         } else {
             result += ']';
         }
@@ -407,11 +428,28 @@ function formatTokens(tokenStr) {
     }
 }
 
-function showTokenModal(event, tokens) {
+function showTokenModal(event, tokenId) {
     event.stopPropagation();
+    
+    // Retrieve tokens from global store
+    const tokens = tokenModalStore[tokenId] || [];
+    if (tokens.length === 0) {
+        console.error('Tokens not found for ID:', tokenId);
+        return;
+    }
     
     // Create modal HTML
     const modalId = 'tokenModal_' + Date.now();
+    const tokenHtmlItems = tokens.map((token, idx) => {
+        const escapedToken = escapeHtml(String(token).trim());
+        return `
+            <div class="flex items-start gap-3 p-2 hover:bg-blue-50 rounded transition">
+                <span class="text-gray-400 flex-shrink-0 w-6 text-right font-semibold">${idx + 1}.</span>
+                <span class="text-gray-800">"${escapedToken}"</span>
+            </div>
+        `;
+    }).join('');
+    
     const modalHTML = `
         <div id="${modalId}" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div class="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-96 overflow-hidden flex flex-col">
@@ -425,12 +463,7 @@ function showTokenModal(event, tokens) {
                 </div>
                 <div class="overflow-y-auto p-6 font-mono text-sm text-gray-700">
                     <div class="space-y-2">
-                        ${tokens.map((token, idx) => `
-                            <div class="flex items-start gap-3 p-2 hover:bg-blue-50 rounded transition">
-                                <span class="text-gray-400 flex-shrink-0 w-6 text-right font-semibold">${idx + 1}.</span>
-                                <span class="text-gray-800">"${escapeHtml(String(token).trim())}"</span>
-                            </div>
-                        `).join('')}
+                        ${tokenHtmlItems}
                     </div>
                 </div>
                 <div class="bg-gray-100 px-6 py-3 flex justify-end gap-3 border-t border-gray-200">

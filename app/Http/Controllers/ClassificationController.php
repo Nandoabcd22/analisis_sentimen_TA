@@ -353,6 +353,7 @@ class ClassificationController extends Controller
                 'data' => [
                     'kernel' => $validated['kernel'],
                     'test_size' => (int)$validated['test_size'],
+                    'from_cache' => $result['from_cache'] ?? false,
                     'accuracy' => floatval($eval['accuracy'] ?? 0),
                     'precision' => floatval($eval['precision_weighted'] ?? 0),
                     'recall' => floatval($eval['recall_weighted'] ?? 0),

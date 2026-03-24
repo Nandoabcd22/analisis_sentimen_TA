@@ -54,5 +54,6 @@ Route::middleware('auth')->group(function () {
     // TF-IDF and Data Processing Routes
     Route::post('/process-tfidf', [DashboardController::class, 'processTfidf'])->name('process.tfidf');
     Route::post('/apply-smote', [DashboardController::class, 'applySmote'])->name('apply.smote');
+    Route::get('/api/smote-status', [DashboardController::class, 'getSmoteStatus'])->name('api.smote.status');
     Route::get('/api/tfidf-results', [DashboardController::class, 'getTfidfResults'])->name('api.tfidf.results');
 });

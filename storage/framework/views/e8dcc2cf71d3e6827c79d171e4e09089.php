@@ -21,8 +21,14 @@
         </div>
 
         <div class="form-group">
-            <label class="form-label">Data Split Ratio (Fixed)</label>
-            <p class="text-sm font-semibold text-gray-700">Training: <span class="text-blue-600">90%</span> | Testing: <span class="text-orange-600">10%</span></p>
+            <label class="form-label">Data Split Ratio</label>
+            <select id="split-ratio" class="form-input" style="padding: 12px 15px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+                <option value="9:1" selected>90% Training | 10% Testing (Recommended)</option>
+                <option value="8:2">80% Training | 20% Testing</option>
+                <option value="7:3">70% Training | 30% Testing</option>
+                <option value="5:5">50% Training | 50% Testing</option>
+            </select>
+            <p style="font-size: 12px; color: #999; margin-top: 8px;">Pilih rasio pembagian data untuk training dan testing</p>
         </div>
 
         <div class="form-group">
@@ -246,7 +252,7 @@
             <!-- Error Message -->
             <div id="prediction-error" style="display: none; margin-top: 20px;">
                 <div style="background: #ffebee; padding: 15px; border-radius: 6px; border-left: 4px solid #f44336; color: #c62828;">
-                    <strong>⚠️ Gagal:</strong> <span id="error-message"></span>
+                    <strong>⚠️ Error:</strong> <span id="error-message"></span>
                 </div>
             </div>
         </div>
@@ -536,6 +542,14 @@
 </style>
 
 <script>
+    // Split ratio mappings
+    const splits = {
+        "9:1": 0.1,
+        "8:2": 0.2,
+        "7:3": 0.3,
+        "5:5": 0.5,
+    };
+
     const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || '';
     let trainingStartTime = null;
     let elapsedTimeInterval = null;
@@ -642,135 +656,197 @@
     });
 
     async function trainModel() {
-        console.log('trainModel function called');
-        const kernel = 'rbf';  // Fixed to RBF
-        const testSize = 10; // Fixed 90:10 split (10% test, 90% train)
-        
-        const trainBtn = document.getElementById('train-btn');
-        trainBtn.disabled = true;
-        trainBtn.textContent = 'Training...';
-
-        document.getElementById('progress-section').style.display = 'block';
-        document.getElementById('results-section').style.display = 'none';
-
-        // Start elapsed time tracking
-        trainingStartTime = Date.now();
-        document.getElementById('elapsed-time').textContent = '0s';
-        
-        // Update elapsed time every 100ms
-        elapsedTimeInterval = setInterval(updateElapsedTime, 100);
-
-        let progress = 0;
-        let elapsedSeconds = 0;
-        
-        const stages = [
-            { progress: 0, message: '🔄 Memuat data...' },
-            { progress: 15, message: '📝 Preprocessing...' },
-            { progress: 35, message: '⚙️ TF-IDF Vectorization...' },
-            { progress: 55, message: '⚖️ SMOTE Balancing...' },
-            { progress: 75, message: '🤖 SVM Training...' },
-            { progress: 90, message: '📊 Evaluasi & Saving...' }
-        ];
-        
-        let currentStageIndex = 0;
-
-        const progressInterval = setInterval(() => {
-            // Update stage message
-            for (let i = stages.length - 1; i >= 0; i--) {
-                if (progress >= stages[i].progress) {
-                    if (i !== currentStageIndex) {
-                        currentStageIndex = i;
-                        document.getElementById('process-stage').textContent = stages[i].message;
-                    }
-                    break;
-                }
-            }
-            
-            // Faster progress increment for parallel processing
-            if (progress < 85) {
-                progress += Math.random() * 5 + 1;  // Increased from 3+0.5
-                progress = Math.min(progress, 84);
-            }
-            
-            updateProgress(progress, 'Processing');
-        }, 300);  // Faster updates (was 400)
-
+        let trainBtn = null;
         try {
-            const response = await fetch('/api/train-model', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': CSRF_TOKEN
-                },
-                body: JSON.stringify({
-                    kernel,
-                    test_size: testSize
-                })
-            });
+            console.log('trainModel function called');
+            const kernel = 'rbf';  // Fixed to RBF
+            
+            // Get required DOM elements
+            trainBtn = document.getElementById('train-btn');
+            const splitRatio = document.getElementById('split-ratio');
+            const progressSection = document.getElementById('progress-section');
+            const resultsSection = document.getElementById('results-section');
+            const elapsedTimeEl = document.getElementById('elapsed-time');
+            const processStageEl = document.getElementById('process-stage');
+            
+            // Validate all elements exist
+            if (!trainBtn) throw new Error('Train button not found');
+            if (!splitRatio) throw new Error('Split ratio dropdown not found');
+            if (!progressSection) throw new Error('Progress section not found');
+            if (!resultsSection) throw new Error('Results section not found');
+            if (!elapsedTimeEl) throw new Error('Elapsed time element not found');
+            if (!processStageEl) throw new Error('Process stage element not found');
+            
+            // Get split ratio from dropdown and convert to test_size
+            const splitKey = splitRatio.value;
+            const testSizeDecimal = splits[splitKey];
+            const testSize = Math.round(testSizeDecimal * 100); // Convert 0.1 → 10, 0.2 → 20, etc.
+            
+            console.log('Split ratio:', splitKey, '-> test_size:', testSize);
+            
+            trainBtn.disabled = true;
+            trainBtn.textContent = 'Loading...';
 
-            const data = await response.json();
+            progressSection.style.display = 'none';
+            resultsSection.style.display = 'none';
 
-            clearInterval(progressInterval);
-            clearInterval(elapsedTimeInterval);
+            // Start elapsed time tracking
+            trainingStartTime = Date.now();
+            elapsedTimeEl.textContent = '0s';
             
-            updateProgress(100, 'Completed!');
-            document.getElementById('process-stage').textContent = '✅ Selesai!';
-            
-            // Calculate total time with validation
-            let timeString = '0s';
-            if (trainingStartTime && typeof trainingStartTime === 'number' && trainingStartTime > 0) {
-                const elapsedMs = Date.now() - trainingStartTime;
-                // Sanity check: elapsed time should be positive and less than 1 hour (3600000ms)
-                if (elapsedMs > 0 && elapsedMs < 3600000) {
-                    const totalTime = Math.floor(elapsedMs / 1000);
-                    const minutes = Math.floor(totalTime / 60);
-                    const seconds = totalTime % 60;
-                    timeString = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
-                } else {
-                    // Fallback: extract from DOM elapsed-time display
-                    const elapsedDisplay = document.getElementById('elapsed-time')?.textContent || '0s';
-                    timeString = elapsedDisplay;
+            let isShowingProgress = false;
+            let progressInterval = null;
+            let elapsedTimeInterval = null;
+
+            // Setup progress UI (only show if training takes more than 2 seconds)
+            const progressTimeout = setTimeout(() => {
+                if (!isShowingProgress) {
+                    isShowingProgress = true;
+                    progressSection.style.display = 'block';
+                    trainBtn.textContent = 'Training...';
+                    
+                    // Show elapsed time
+                    elapsedTimeInterval = setInterval(updateElapsedTime, 100);
+                    
+                    let progress = 0;
+                    const stages = [
+                        { progress: 0, message: '🔄 Memuat data...' },
+                        { progress: 15, message: '📝 Preprocessing...' },
+                        { progress: 35, message: '⚙️ TF-IDF Vectorization...' },
+                        { progress: 55, message: '⚖️ SMOTE Balancing...' },
+                        { progress: 75, message: '🤖 SVM Training...' },
+                        { progress: 90, message: '📊 Evaluasi & Saving...' }
+                    ];
+                    let currentStageIndex = 0;
+
+                    progressInterval = setInterval(() => {
+                        if (!processStageEl) return;
+                        
+                        for (let i = stages.length - 1; i >= 0; i--) {
+                            if (progress >= stages[i].progress) {
+                                if (i !== currentStageIndex) {
+                                    currentStageIndex = i;
+                                    processStageEl.textContent = stages[i].message;
+                                }
+                                break;
+                            }
+                        }
+                        
+                        if (progress < 85) {
+                            progress += Math.random() * 5 + 1;
+                            progress = Math.min(progress, 84);
+                        }
+                        
+                        updateProgress(progress, 'Processing');
+                    }, 300);
                 }
-            }
-            
-            if (data.success) {
-                console.log('Training successful, data:', data.data);
+            }, 2000);  // Only show progress if takes more than 2 seconds
+
+            try {
+                const response = await fetch('/api/train-model', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': CSRF_TOKEN
+                    },
+                    body: JSON.stringify({
+                        kernel,
+                        test_size: testSize
+                    })
+                });
+
+                const data = await response.json();
+
+                clearTimeout(progressTimeout);
+                clearInterval(progressInterval);
+                clearInterval(elapsedTimeInterval);
                 
-                // Display results section immediately (fastest)
-                document.getElementById('results-section').style.display = 'block';
-                
-                // Display metrics & matrix instantly
-                displayResults(data.data);
-                
-                // Load wordcloud in background (don't wait for it)
-                if (data.data.wordcloud) {
-                    console.log('WordCloud found in response, displaying...');
-                    displayWordCloudImage(data.data.wordcloud);
-                } else {
-                    console.log('No wordcloud in response, attempting API fetch...');
-                    loadWordCloud(); // Async - will update when ready
+                if (isShowingProgress) {
+                    updateProgress(100, 'Completed!');
+                    if (processStageEl) {
+                        processStageEl.textContent = '✅ Selesai!';
+                    }
                 }
                 
-                checkCacheStatus(); // Update cache status for next training
-                alert('✓ Model training berhasil!\n\nWaktu: ' + timeString + '\n\n🚀 OPTIMIZED: Pelatihan SVM lebih cepat dengan parallelisasi!');
-            } else {
-                alert('✗ Gagal: ' + (data.message || 'Training gagal'));
+                // Calculate total time with validation
+                let timeString = '0s';
+                if (trainingStartTime && typeof trainingStartTime === 'number' && trainingStartTime > 0) {
+                    const elapsedMs = Date.now() - trainingStartTime;
+                    // Sanity check: elapsed time should be positive and less than 1 hour (3600000ms)
+                    if (elapsedMs > 0 && elapsedMs < 3600000) {
+                        const totalTime = Math.floor(elapsedMs / 1000);
+                        const minutes = Math.floor(totalTime / 60);
+                        const seconds = totalTime % 60;
+                        timeString = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+                    } else {
+                        // Fallback: extract from DOM elapsed-time display
+                        const elapsedDisplay = elapsedTimeEl?.textContent || '0s';
+                        timeString = elapsedDisplay;
+                    }
+                }
+                
+                if (data.success) {
+                    console.log('Training successful, data:', data.data);
+                    
+                    // Display results section immediately (fastest)
+                    resultsSection.style.display = 'block';
+                    
+                    // Display metrics & matrix instantly
+                    displayResults(data.data);
+                    
+                    // Load wordcloud in background (don't wait for it)
+                    if (data.data.wordcloud) {
+                        console.log('WordCloud found in response, displaying...');
+                        displayWordCloudImage(data.data.wordcloud);
+                    } else {
+                        console.log('No wordcloud in response, attempting API fetch...');
+                        loadWordCloud(); // Async - will update when ready
+                    }
+                    
+                    checkCacheStatus(); // Update cache status for next training
+                    
+                    // Show cache status in alert
+                    const cacheStatus = data.data?.from_cache ? '⚡ INSTANT (dari cache)' : '✓ Training berhasil!';
+                    alert(`${cacheStatus}\n\nWaktu: ${timeString}`);
+                } else {
+                    alert('✗ Error: ' + (data.message || 'Training failed'));
+                }
+            } catch (fetchError) {
+                clearTimeout(progressTimeout);
+                clearInterval(progressInterval);
+                clearInterval(elapsedTimeInterval);
+                console.error('Fetch error:', fetchError);
+                alert('✗ Error: ' + fetchError.message);
+            } finally {
+                clearTimeout(progressTimeout);
+                clearInterval(progressInterval);
+                clearInterval(elapsedTimeInterval);
+                if (trainBtn) {
+                    trainBtn.disabled = false;
+                    trainBtn.textContent = 'Mulai Training';
+                }
+                trainingStartTime = null;
             }
-        } catch (error) {
-            clearInterval(progressInterval);
-            clearInterval(elapsedTimeInterval);
-            console.error('Error:', error);
-            alert('✗ Gagal: ' + error.message);
-        } finally {
-            trainBtn.disabled = false;
-            trainBtn.textContent = 'Mulai Training';
-            trainingStartTime = null;
+        } catch (outerError) {
+            console.error('Error in trainModel:', outerError);
+            if (trainBtn) {
+                trainBtn.disabled = false;
+                trainBtn.textContent = 'Mulai Training';
+            }
+            alert('✗ Error: ' + outerError.message);
         }
     }
 
     function updateProgress(percent, text) {
-        document.getElementById('progress-fill').style.width = percent + '%';
-        document.getElementById('progress-text').textContent = text + ' (' + Math.round(percent) + '%)';
+        const progressFill = document.getElementById('progress-fill');
+        const progressText = document.getElementById('progress-text');
+        
+        if (progressFill) {
+            progressFill.style.width = percent + '%';
+        }
+        if (progressText) {
+            progressText.textContent = text + ' (' + Math.round(percent) + '%)';
+        }
     }
 
     function displayResults(data) {
@@ -967,7 +1043,7 @@
         .catch(error => {
             console.error('Error loading wordcloud:', error);
             document.getElementById('wordcloud-container').innerHTML = 
-                '<div style="text-align: center; padding: 40px; color: #999;"><p>⚠️ Gagal: ' + error.message + '</p></div>';
+                '<div style="text-align: center; padding: 40px; color: #999;"><p>⚠️ Error: ' + error.message + '</p></div>';
         });
     }
 

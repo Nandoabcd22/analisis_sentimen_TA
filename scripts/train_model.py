@@ -14,6 +14,8 @@ import pandas as pd
 import numpy as np
 import re
 import time
+import hashlib
+import base64
 from datetime import datetime
 
 # Don't wrap sys.stderr to avoid conflicts with imported modules
@@ -80,6 +82,90 @@ try:
     nltk.data.find('corpora/stopwords')
 except LookupError:
     nltk.download('stopwords', quiet=True)
+
+
+# ============= CACHING SYSTEM =============
+CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'storage', 'app', 'models', 'cache')
+os.makedirs(CACHE_DIR, exist_ok=True)
+
+def compute_data_hash(df):
+    """Compute SHA256 hash of dataframe to detect changes"""
+    if df is None or len(df) == 0:
+        return None
+    try:
+        # Hash based on: row count + label distribution + first few rows
+        data_str = f"{len(df)}{df['label'].value_counts().to_dict()}{df['text'].iloc[:5].to_string()}"
+        return hashlib.sha256(data_str.encode()).hexdigest()
+    except Exception as e:
+        print(f"⚠ Cache hash error: {e}", file=sys.stderr)
+        return None
+
+def get_cache_path(kernel, test_size):
+    """Get path for cached model/vectorizer/preprocessor"""
+    return {
+        'metadata': os.path.join(CACHE_DIR, f'metadata_{kernel}_{test_size}.json'),
+        'vectorizer': os.path.join(CACHE_DIR, f'vectorizer_{kernel}_{test_size}.pkl'),
+        'model': os.path.join(CACHE_DIR, f'model_{kernel}_{test_size}.pkl'),
+        'results': os.path.join(CACHE_DIR, f'results_{kernel}_{test_size}.json'),
+    }
+
+def cache_exists(kernel, test_size, data_hash):
+    """Check if valid cache exists for this kernel, test_size and data"""
+    paths = get_cache_path(kernel, test_size)
+    
+    if not os.path.exists(paths['metadata']):
+        return False
+    
+    try:
+        with open(paths['metadata'], 'r') as f:
+            metadata = json.load(f)
+            return metadata.get('data_hash') == data_hash and all(os.path.exists(paths[k]) for k in ['vectorizer', 'model', 'results'])
+    except:
+        return False
+
+def save_cache(kernel, test_size, data_hash, vectorizer, model, results):
+    """Save vectorizer, model, and results to cache"""
+    paths = get_cache_path(kernel, test_size)
+    
+    try:
+        # Save metadata
+        metadata = {'data_hash': data_hash, 'timestamp': datetime.now().isoformat(), 'kernel': kernel, 'test_size': test_size}
+        with open(paths['metadata'], 'w') as f:
+            json.dump(metadata, f)
+        
+        # Save vectorizer & model
+        with open(paths['vectorizer'], 'wb') as f:
+            pickle.dump(vectorizer, f)
+        with open(paths['model'], 'wb') as f:
+            pickle.dump(model, f)
+        
+        # Save results JSON
+        with open(paths['results'], 'w') as f:
+            json.dump(results, f)
+        
+        print(f"✓ Cache saved for kernel={kernel}, test_size={test_size}", file=sys.stderr)
+        return True
+    except Exception as e:
+        print(f"⚠ Cache save failed: {e}", file=sys.stderr)
+        return False
+
+def load_cache(kernel, test_size):
+    """Load vectorizer, model, and results from cache"""
+    paths = get_cache_path(kernel, test_size)
+    
+    try:
+        with open(paths['vectorizer'], 'rb') as f:
+            vectorizer = pickle.load(f)
+        with open(paths['model'], 'rb') as f:
+            model = pickle.load(f)
+        with open(paths['results'], 'r') as f:
+            results = json.load(f)
+        
+        print(f"✓ Cache loaded instantly for kernel={kernel}, test_size={test_size}", file=sys.stderr)
+        return vectorizer, model, results
+    except Exception as e:
+        print(f"⚠ Cache load failed: {e}", file=sys.stderr)
+        return None, None, None
 
 
 def load_kamus_normalisasi():
@@ -311,6 +397,39 @@ def train_model(csv_path=None, test_size=10):
         print(f"Jumlah Data Awal: {df.shape[0]}", file=sys.stderr)
         print(f"Label Distribution: {df['label'].value_counts().to_dict()}", file=sys.stderr)
         print(f"⏱️  Time: {stage_times['load_data']:.2f}s", file=sys.stderr)
+        
+        # ========== CACHE CHECK ==========
+        print("\n[CACHE] Memeriksa cache untuk kernel='rbf' dan test_size='10'...", file=sys.stderr)
+        data_hash = compute_data_hash(df)
+        kernel = 'rbf'
+        
+        if cache_exists(kernel, test_size, data_hash):
+            print("🚀 CACHE FOUND! Loading dari cache (INSTANT)...", file=sys.stderr)
+            vectorizer, model, results = load_cache(kernel, test_size)
+            
+            if vectorizer and model and results:
+                cache_time = time.time() - start_total
+                print(f"\n✅ Training SELESAI (FROM CACHE)!", file=sys.stderr)
+                print(f"⏱️  Total waktu: {cache_time:.2f}s (INSTANT!)", file=sys.stderr)
+                
+                # Return cached results
+                return {
+                    'success': True,
+                    'message': f'Model loaded dari cache dalam {cache_time:.2f}s (INSTANT!)',
+                    'from_cache': True,
+                    'cache_hit': True,
+                    'data_count': len(df),
+                    'metrics': results.get('metrics_91', {}),
+                    'confusion_matrix': results.get('confusion_matrix', []),
+                    'per_class_metrics': results.get('per_class_metrics', {}),
+                    'cross_validation': results.get('cross_validation', []),
+                    'split_results': results.get('split_results', {}),
+                    'wordcloud_image': results.get('wordcloud_image'),
+                    'total_time': cache_time,
+                    'stage_times': {'cache_load': cache_time}
+                }
+        
+        print("❌ Cache tidak ditemukan atau data telah berubah. Training normal...", file=sys.stderr)
         
         # ========== STEP 2: Load Normalization Dictionary ==========
         print("\n[STEP 2] Loading Normalization Dictionary...", file=sys.stderr)
@@ -598,9 +717,10 @@ def train_model(csv_path=None, test_size=10):
 
 def train_svm_model(csv_path=None, test_size=10, kernel='rbf'):
     """
-    Train SVM Model - FAST OPTIMIZED VERSION
+    Train SVM Model - FAST OPTIMIZED VERSION with CACHING
     
     Optimizations:
+    - Smart caching system: instant load if data unchanged
     - Uses joblib parallel for SVM training (n_jobs=-1)
     - Efficient sparse matrix operations
     - Skips unnecessary cross-validation on first pass
@@ -630,6 +750,25 @@ def train_svm_model(csv_path=None, test_size=10, kernel='rbf'):
             }
         
         print(f"  Data: {df.shape[0]} rows | Distribution: {df['label'].value_counts().to_dict()} | Time: {time.time()-start_step:.1f}s", file=sys.stderr)
+        
+        # ========== CACHE CHECK ==========
+        print("\n[CACHE] Checking cache...", file=sys.stderr)
+        data_hash = compute_data_hash(df)
+        
+        if cache_exists(kernel, test_size, data_hash):
+            cache_start = time.time()
+            print(f"  🎯 CACHE HIT! Loading instantly...", file=sys.stderr)
+            vectorizer, model, results = load_cache(kernel, test_size)
+            
+            if vectorizer and model and results:
+                cache_time = time.time() - cache_start
+                print(f"\n✅ Training COMPLETE (FROM CACHE in {cache_time:.2f}s)!", file=sys.stderr)
+                print(f"⏱️  Total time: {cache_time:.2f}s (INSTANT!)", file=sys.stderr)
+                
+                # Return cached results
+                return results
+        
+        print(f"  ❌ No cache found. Starting normal training...", file=sys.stderr)
         
         # ========== STEP 2: Preprocessing ==========
         print("\n[2/7] Preprocessing Data...", file=sys.stderr)
@@ -801,10 +940,12 @@ def train_svm_model(csv_path=None, test_size=10, kernel='rbf'):
         print(f"  Model saved | Time: {time.time()-start_step:.1f}s", file=sys.stderr)
         print(f"\n✅ TOTAL TIME: {total_time:.1f}s", file=sys.stderr)
         
-        # ========== Return Results ==========
-        return {
+        # ========== Save to Cache for INSTANT loading next time ==========
+        print(f"\n[CACHE] Saving trained model & vectorizer to cache...", file=sys.stderr)
+        results_to_cache = {
             'success': True,
             'message': f'Model training completed in {total_time:.1f}s',
+            'from_cache': False,
             'data': {
                 'total_samples': len(df),
                 'train_samples': len(X_train),
@@ -822,6 +963,15 @@ def train_svm_model(csv_path=None, test_size=10, kernel='rbf'):
                 'wordcloud': wordcloud_base64
             }
         }
+        
+        # Cache the model, vectorizer and results
+        cache_save_success = save_cache(kernel, test_size, data_hash, tfidf, svm, results_to_cache)
+        
+        if cache_save_success:
+            print(f"✅ Cache saved! Next run will be INSTANT.", file=sys.stderr)
+        
+        # ========== Return Results ==========
+        return results_to_cache
         
     except Exception as e:
         import traceback

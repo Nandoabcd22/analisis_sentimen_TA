@@ -381,7 +381,7 @@ async function handleFileUpload(event) {
         }
 
         if (response.ok && result.success) {
-            alert('File uploaded and processed successfully!');
+            alert('File berhasil diunggah dan diproses!');
             fileInput.value = '';
             document.getElementById('fileName').textContent = 'No file chosen';
 
@@ -389,12 +389,12 @@ async function handleFileUpload(event) {
             currentPage = 1;
             await loadReviews();
         } else {
-            const message = result?.message || 'Upload failed';
-            alert('Error: ' + message);
+            const message = result?.message || 'Gagal mengunggah';
+            alert('Gagal: ' + message);
         }
     } catch (error) {
         console.error('Upload error:', error);
-        alert('Upload error: ' + (error.message || 'Please try again.'));
+        alert('Kesalahan unggah: ' + (error.message || 'Silakan coba lagi.'));
     } finally {
         // Re-enable submit button
         submitBtn.disabled = false;
