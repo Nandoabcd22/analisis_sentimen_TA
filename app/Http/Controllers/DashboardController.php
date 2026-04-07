@@ -697,10 +697,10 @@ class DashboardController extends Controller
         }
         
         try {
-            // Prepare command with PYTHONUNBUFFERED for faster I/O + AGGRESSIVE mode for 3-5x speedup
+            // Prepare command with PYTHONUNBUFFERED for faster I/O
             $escapedScript = escapeshellarg($scriptPath);
             $escapedFile = escapeshellarg($tempFile);
-            $cmd = "set PYTHONUNBUFFERED=1 & {$pythonCmd} {$escapedScript} --batch {$escapedFile} --aggressive --ultra-fast 2>&1";
+            $cmd = "set PYTHONUNBUFFERED=1 & {$pythonCmd} {$escapedScript} --batch {$escapedFile} 2>&1";
             
             // Execute batch
             $output = shell_exec($cmd);
@@ -847,85 +847,89 @@ class DashboardController extends Controller
         $db = \DB::connection()->getPdo();
         $processedCount = 0;
         
-        // Use transaction for atomic operation
+        // ✅ OPTIMIZATION: Chunk updates into smaller batches (1000 at a time)
+        // Much faster than building 100MB+ query for all records!
+        $chunkSize = 1000;
+        $chunks = array_chunk($results, $chunkSize);
+        
         \DB::beginTransaction();
         
         try {
-            // ✅ OPTIMIZATION: Use massive CASE statement instead of per-row updates (100x faster)
-            // Build one giant UPDATE with CASE statement for all rows at once
-            $ids = [];
-            $updateValues = [];
-            
-            foreach ($results as $result) {
-                $id = (int)$result['id'];
-                $ids[] = $id;
+            foreach ($chunks as $chunk) {
+                // Build CASE statements for this chunk only (much smaller!)
+                $ids = [];
+                $updateValues = [];
                 
-                $case_folding = $this->forceUtf8($result['case_folding'] ?? '');
-                $cleansing = $this->forceUtf8($result['cleansing'] ?? '');
-                $normalisasi = $this->forceUtf8($result['normalisasi'] ?? '');
-                $tokenizing = is_array($result['tokenizing'] ?? null) ? json_encode($result['tokenizing']) : '[]';
-                $stopword = is_array($result['stopword'] ?? null) ? json_encode($result['stopword']) : '[]';
-                $stemming = is_array($result['stemming'] ?? null) ? json_encode($result['stemming']) : '[]';
+                foreach ($chunk as $result) {
+                    $id = (int)$result['id'];
+                    $ids[] = $id;
+                    
+                    $case_folding = $this->forceUtf8($result['case_folding'] ?? '');
+                    $cleansing = $this->forceUtf8($result['cleansing'] ?? '');
+                    $normalisasi = $this->forceUtf8($result['normalisasi'] ?? '');
+                    $tokenizing = is_array($result['tokenizing'] ?? null) ? json_encode($result['tokenizing']) : '[]';
+                    $stopword = is_array($result['stopword'] ?? null) ? json_encode($result['stopword']) : '[]';
+                    $stemming = is_array($result['stemming'] ?? null) ? json_encode($result['stemming']) : '[]';
+                    
+                    $updateValues[$id] = [
+                        'case_folding' => $case_folding,
+                        'cleansing' => $cleansing,
+                        'normalisasi' => $normalisasi,
+                        'tokenizing' => $tokenizing,
+                        'stopword' => $stopword,
+                        'stemming' => $stemming,
+                    ];
+                }
                 
-                $updateValues[$id] = [
-                    'case_folding' => $case_folding,
-                    'cleansing' => $cleansing,
-                    'normalisasi' => $normalisasi,
-                    'tokenizing' => $tokenizing,
-                    'stopword' => $stopword,
-                    'stemming' => $stemming,
-                ];
+                if (empty($ids)) {
+                    continue;
+                }
+                
+                // ✅ Build CASE for this chunk only (1000 records = ~1-2MB, not 100MB!)
+                $idList = implode(',', $ids);
+                
+                $caseFolding = "CASE id\n";
+                $cleansing = "CASE id\n";
+                $normalisasi = "CASE id\n";
+                $tokenizing = "CASE id\n";
+                $stopword = "CASE id\n";
+                $stemming = "CASE id\n";
+                
+                foreach ($updateValues as $id => $values) {
+                    $caseFolding .= "WHEN {$id} THEN " . $db->quote($values['case_folding']) . "\n";
+                    $cleansing .= "WHEN {$id} THEN " . $db->quote($values['cleansing']) . "\n";
+                    $normalisasi .= "WHEN {$id} THEN " . $db->quote($values['normalisasi']) . "\n";
+                    $tokenizing .= "WHEN {$id} THEN " . $db->quote($values['tokenizing']) . "\n";
+                    $stopword .= "WHEN {$id} THEN " . $db->quote($values['stopword']) . "\n";
+                    $stemming .= "WHEN {$id} THEN " . $db->quote($values['stemming']) . "\n";
+                }
+                
+                $caseFolding .= "END";
+                $cleansing .= "END";
+                $normalisasi .= "END";
+                $tokenizing .= "END";
+                $stopword .= "END";
+                $stemming .= "END";
+                
+                // Execute chunk update (small & fast!)
+                $sql = "UPDATE reviews SET 
+                    case_folding = {$caseFolding},
+                    cleansing = {$cleansing},
+                    normalisasi = {$normalisasi},
+                    tokenizing = {$tokenizing},
+                    stopword = {$stopword},
+                    stemming = {$stemming},
+                    updated_at = NOW()
+                WHERE id IN ({$idList})";
+                
+                $stmt = $db->prepare($sql);
+                $stmt->execute();
+                
+                $processedCount += $stmt->rowCount();
             }
-            
-            if (empty($ids)) {
-                \DB::commit();
-                return 0;
-            }
-            
-            // Build CASE statements for each field
-            $idList = implode(',', $ids);
-            
-            $caseFolding = "CASE id\n";
-            $cleansing = "CASE id\n";
-            $normalisasi = "CASE id\n";
-            $tokenizing = "CASE id\n";
-            $stopword = "CASE id\n";
-            $stemming = "CASE id\n";
-            
-            foreach ($updateValues as $id => $values) {
-                $caseFolding .= "WHEN {$id} THEN " . $db->quote($values['case_folding']) . "\n";
-                $cleansing .= "WHEN {$id} THEN " . $db->quote($values['cleansing']) . "\n";
-                $normalisasi .= "WHEN {$id} THEN " . $db->quote($values['normalisasi']) . "\n";
-                $tokenizing .= "WHEN {$id} THEN " . $db->quote($values['tokenizing']) . "\n";
-                $stopword .= "WHEN {$id} THEN " . $db->quote($values['stopword']) . "\n";
-                $stemming .= "WHEN {$id} THEN " . $db->quote($values['stemming']) . "\n";
-            }
-            
-            $caseFolding .= "END";
-            $cleansing .= "END";
-            $normalisasi .= "END";
-            $tokenizing .= "END";
-            $stopword .= "END";
-            $stemming .= "END";
-            
-            // Single massive UPDATE query for ALL rows
-            $sql = "UPDATE reviews SET 
-                case_folding = {$caseFolding},
-                cleansing = {$cleansing},
-                normalisasi = {$normalisasi},
-                tokenizing = {$tokenizing},
-                stopword = {$stopword},
-                stemming = {$stemming},
-                updated_at = NOW()
-            WHERE id IN ({$idList})";
-            
-            $stmt = $db->prepare($sql);
-            $stmt->execute();
-            
-            $processedCount = $stmt->rowCount();
             
             \DB::commit();
-            \Log::info("✅ OPTIMIZED batch update completed: {$processedCount} records updated with single query");
+            \Log::info("✅ CHUNKED batch update completed: {$processedCount} records in " . count($chunks) . " chunks");
             
         } catch (\Exception $e) {
             \DB::rollBack();

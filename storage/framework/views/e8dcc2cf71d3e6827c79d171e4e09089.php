@@ -26,6 +26,7 @@
                 <option value="9:1" selected>90% Training | 10% Testing (Recommended)</option>
                 <option value="8:2">80% Training | 20% Testing</option>
                 <option value="7:3">70% Training | 30% Testing</option>
+                <option value="6:4">60% Training | 40% Testing</option>
                 <option value="5:5">50% Training | 50% Testing</option>
             </select>
             <p style="font-size: 12px; color: #999; margin-top: 8px;">Pilih rasio pembagian data untuk training dan testing</p>
@@ -547,6 +548,7 @@
         "9:1": 0.1,
         "8:2": 0.2,
         "7:3": 0.3,
+        "6:4": 0.4,
         "5:5": 0.5,
     };
 
@@ -659,7 +661,6 @@
         let trainBtn = null;
         try {
             console.log('trainModel function called');
-            const kernel = 'rbf';  // Fixed to RBF
             
             // Get required DOM elements
             trainBtn = document.getElementById('train-btn');
@@ -677,12 +678,13 @@
             if (!elapsedTimeEl) throw new Error('Elapsed time element not found');
             if (!processStageEl) throw new Error('Process stage element not found');
             
-            // Get split ratio from dropdown and convert to test_size
+            // Get parameters
             const splitKey = splitRatio.value;
+            const kernel = 'rbf';  // Default RBF for exact colab match
             const testSizeDecimal = splits[splitKey];
-            const testSize = Math.round(testSizeDecimal * 100); // Convert 0.1 → 10, 0.2 → 20, etc.
+            const testSize = Math.round(testSizeDecimal * 100);
             
-            console.log('Split ratio:', splitKey, '-> test_size:', testSize);
+            console.log('Parameters:', { splitKey, testSize, kernel });
             
             trainBtn.disabled = true;
             trainBtn.textContent = 'Loading...';
@@ -805,9 +807,8 @@
                     
                     checkCacheStatus(); // Update cache status for next training
                     
-                    // Show cache status in alert
-                    const cacheStatus = data.data?.from_cache ? '⚡ INSTANT (dari cache)' : '✓ Training berhasil!';
-                    alert(`${cacheStatus}\n\nWaktu: ${timeString}`);
+                    // Show success message
+                    alert(`✓ Training Berhasil!\n\nWaktu: ${timeString}`);
                 } else {
                     alert('✗ Error: ' + (data.message || 'Training failed'));
                 }
@@ -850,39 +851,61 @@
     }
 
     function displayResults(data) {
+        console.log('=== DEBUG displayResults ===');
+        console.log('Full data object:', data);
+        console.log('accuracy:', data.accuracy);
+        console.log('precision:', data.precision);
+        console.log('recall:', data.recall);
+        console.log('f1_score:', data.f1_score);
+        
         // Config
-        document.getElementById('result-kernel').textContent = data.kernel || '-';
-        document.getElementById('result-total').textContent = (data.total_samples || 0).toLocaleString();
-        document.getElementById('result-train').textContent = (data.train_samples || 0).toLocaleString();
-        document.getElementById('result-test').textContent = (data.test_samples || 0).toLocaleString();
-        document.getElementById('result-features').textContent = (data.features || 0).toLocaleString();
+        const resultKernelEl = document.getElementById('result-kernel');
+        const resultTotalEl = document.getElementById('result-total');
+        const resultTrainEl = document.getElementById('result-train');
+        const resultTestEl = document.getElementById('result-test');
+        const resultFeaturesEl = document.getElementById('result-features');
+        
+        if (resultKernelEl) resultKernelEl.textContent = data.kernel || '-';
+        if (resultTotalEl) resultTotalEl.textContent = (data.total_samples || 0).toLocaleString();
+        if (resultTrainEl) resultTrainEl.textContent = (data.train_samples || 0).toLocaleString();
+        if (resultTestEl) resultTestEl.textContent = (data.test_samples || 0).toLocaleString();
+        if (resultFeaturesEl) resultFeaturesEl.textContent = (data.features || 0).toLocaleString();
 
-        // Metrics
-        const accuracy = parseFloat(data.accuracy || 0);
-        const precision = parseFloat(data.precision || 0);
-        const recall = parseFloat(data.recall || 0);
-        const f1 = parseFloat(data.f1_score || 0);
+        // Metrics - dengan fallback untuk field berbeda
+        let accuracy = parseFloat(data.accuracy || 0);
+        let precision = parseFloat(data.precision || data['precision_avg'] || 0);
+        let recall = parseFloat(data.recall || data['recall_avg'] || 0);
+        let f1 = parseFloat(data.f1_score || data['f1_avg'] || 0);
+        
+        console.log('Parsed values - accuracy:', accuracy, 'precision:', precision, 'recall:', recall, 'f1:', f1);
 
-        document.getElementById('metric-accuracy').textContent = (accuracy * 100).toFixed(2) + '%';
-        document.getElementById('metric-precision').textContent = (precision * 100).toFixed(2) + '%';
-        document.getElementById('metric-recall').textContent = (recall * 100).toFixed(2) + '%';
-        document.getElementById('metric-f1').textContent = (f1 * 100).toFixed(2) + '%';
+        const metricAccuracyEl = document.getElementById('metric-accuracy');
+        const metricPrecisionEl = document.getElementById('metric-precision');
+        const metricRecallEl = document.getElementById('metric-recall');
+        const metricF1El = document.getElementById('metric-f1');
+        
+        if (metricAccuracyEl) metricAccuracyEl.textContent = (accuracy * 100).toFixed(2) + '%';
+        if (metricPrecisionEl) metricPrecisionEl.textContent = (precision * 100).toFixed(2) + '%';
+        if (metricRecallEl) metricRecallEl.textContent = (recall * 100).toFixed(2) + '%';
+        if (metricF1El) metricF1El.textContent = (f1 * 100).toFixed(2) + '%';
 
         // Per-class metrics
         const perClass = data.per_class_metrics || {};
         const tbody = document.getElementById('per-class-tbody');
-        tbody.innerHTML = '';
+        if (tbody) {
+            tbody.innerHTML = '';
 
-        for (const [className, metrics] of Object.entries(perClass)) {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td><strong>${className}</strong></td>
-                <td>${(metrics.precision * 100).toFixed(2)}%</td>
-                <td>${(metrics.recall * 100).toFixed(2)}%</td>
-                <td>${(metrics['f1-score'] * 100).toFixed(2)}%</td>
-                <td>${metrics.support || 0}</td>
-            `;
-            tbody.appendChild(row);
+            for (const [className, metrics] of Object.entries(perClass)) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${className}</strong></td>
+                    <td>${(metrics.precision * 100).toFixed(2)}%</td>
+                    <td>${(metrics.recall * 100).toFixed(2)}%</td>
+                    <td>${(metrics['f1-score'] * 100).toFixed(2)}%</td>
+                    <td>${metrics.support || 0}</td>
+                `;
+                tbody.appendChild(row);
+            }
         }
 
         // Confusion Matrix
@@ -891,15 +914,24 @@
 
         // Update CM header and labels
         for (let i = 0; i < 3; i++) {
-            document.getElementById('cm-header-' + i).textContent = classes[i] || 'Class ' + i;
-            document.getElementById('cm-label-' + i).textContent = classes[i] || 'Class ' + i;
+            const headerEl = document.getElementById('cm-header-' + i);
+            const labelEl = document.getElementById('cm-label-' + i);
+            if (headerEl) {
+                headerEl.textContent = classes[i] || 'Class ' + i;
+            }
+            if (labelEl) {
+                labelEl.textContent = classes[i] || 'Class ' + i;
+            }
         }
 
         // Fill CM values
         for (let i = 0; i < 3; i++) {
             for (let j = 0; j < 3; j++) {
                 const cellId = 'cm-' + i + j;
-                document.getElementById(cellId).textContent = cm[i]?.[j] || 0;
+                const cellEl = document.getElementById(cellId);
+                if (cellEl) {
+                    cellEl.textContent = cm[i]?.[j] || 0;
+                }
             }
         }
 
@@ -915,7 +947,13 @@
     function displayConfusionMatrixImage(base64Image) {
         try {
             // Find the CM container (the first column in grid)
-            const cmContainer = document.querySelector('#wordcloud-container').parentElement.previousElementSibling;
+            const wordcloudContainer = document.getElementById('wordcloud-container');
+            if (!wordcloudContainer) {
+                console.log('wordcloud-container not found');
+                return;
+            }
+            
+            const cmContainer = wordcloudContainer.parentElement.previousElementSibling;
             if (!cmContainer) {
                 console.log('CM container not found, using HTML heatmap fallback');
                 return;
@@ -997,6 +1035,8 @@
             for (let j = 0; j < 3; j++) {
                 const cellId = 'cm-' + i + j;
                 const cellElement = document.getElementById(cellId);
+                if (!cellElement) continue;
+                
                 const value = cm[i]?.[j] || 0;
                 
                 // Apply background color
@@ -1036,26 +1076,40 @@
                 displayWordCloudImage(data.data.image);
             } else {
                 console.error('No wordcloud image:', data);
-                document.getElementById('wordcloud-container').innerHTML = 
-                    '<div style="text-align: center; padding: 40px; color: #999;"><p>⚠️ Wordcloud belum tersedia</p></div>';
+                const container = document.getElementById('wordcloud-container');
+                if (container) {
+                    container.innerHTML = 
+                        '<div style="text-align: center; padding: 40px; color: #999;"><p>⚠️ Wordcloud belum tersedia</p></div>';
+                }
             }
         })
         .catch(error => {
             console.error('Error loading wordcloud:', error);
-            document.getElementById('wordcloud-container').innerHTML = 
-                '<div style="text-align: center; padding: 40px; color: #999;"><p>⚠️ Error: ' + error.message + '</p></div>';
+            const container = document.getElementById('wordcloud-container');
+            if (container) {
+                container.innerHTML = 
+                    '<div style="text-align: center; padding: 40px; color: #999;"><p>⚠️ Error: ' + error.message + '</p></div>';
+            }
         });
     }
 
     function displayWordCloudImage(base64Image) {
         if (!base64Image) {
             console.error('No base64 image provided');
-            document.getElementById('wordcloud-container').innerHTML = 
-                '<div style="text-align: center; padding: 40px; color: #999;"><p>⚠️ WordCloud generation gagal</p></div>';
+            const container = document.getElementById('wordcloud-container');
+            if (container) {
+                container.innerHTML = 
+                    '<div style="text-align: center; padding: 40px; color: #999;"><p>⚠️ WordCloud generation gagal</p></div>';
+            }
             return;
         }
         
         const container = document.getElementById('wordcloud-container');
+        if (!container) {
+            console.error('wordcloud-container not found');
+            return;
+        }
+        
         const img = document.createElement('img');
         img.src = 'data:image/png;base64,' + base64Image;
         img.style.maxWidth = '100%';
@@ -1134,44 +1188,56 @@
         const sentiment = sentimentMap[data.prediction] || 'Tidak Diketahui';
         const confidence = (data.confidence * 100).toFixed(2);
 
-        document.getElementById('predict-sentiment').textContent = sentiment;
-        document.getElementById('predict-confidence').textContent = confidence + '%';
-        document.getElementById('predict-input-text').textContent = data.text;
+        const predictSentimentEl = document.getElementById('predict-sentiment');
+        const predictConfidenceEl = document.getElementById('predict-confidence');
+        const predictInputTextEl = document.getElementById('predict-input-text');
+        const probBarsContainer = document.getElementById('probability-bars');
+        
+        if (predictSentimentEl) predictSentimentEl.textContent = sentiment;
+        if (predictConfidenceEl) predictConfidenceEl.textContent = confidence + '%';
+        if (predictInputTextEl) predictInputTextEl.textContent = data.text;
 
         // Display probability distribution
-        const probBarsContainer = document.getElementById('probability-bars');
-        probBarsContainer.innerHTML = '';
+        if (probBarsContainer) {
+            probBarsContainer.innerHTML = '';
 
-        const classLabels = data.classes || ['Negatif', 'Netral', 'Positif'];
-        const probabilities = data.probabilities || [0, 0, 0];
-        const maxProb = Math.max(...probabilities);
+            const classLabels = data.classes || ['Negatif', 'Netral', 'Positif'];
+            const probabilities = data.probabilities || [0, 0, 0];
+            const maxProb = Math.max(...probabilities);
 
-        const colors = ['#f44336', '#FF9800', '#4CAF50'];
+            const colors = ['#f44336', '#FF9800', '#4CAF50'];
 
-        for (let i = 0; i < classLabels.length; i++) {
-            const prob = probabilities[i];
-            const percent = (prob * 100).toFixed(2);
-            const isMaxProb = prob === maxProb;
+            for (let i = 0; i < classLabels.length; i++) {
+                const prob = probabilities[i];
+                const percent = (prob * 100).toFixed(2);
+                const isMaxProb = prob === maxProb;
 
-            const barHtml = `
-                <div style="display: grid; grid-template-columns: 100px 1fr 80px; gap: 15px; align-items: center;">
-                    <div style="font-size: 13px; font-weight: 600; color: #333;">${classLabels[i]}</div>
-                    <div style="background: #e0e0e0; height: 24px; border-radius: 4px; overflow: hidden; position: relative;">
-                        <div style="background: ${colors[i]}; height: 100%; width: ${percent}%; transition: width 0.3s ease; ${isMaxProb ? 'box-shadow: 0 0 8px ' + colors[i] + '80;' : ''}"></div>
+                const barHtml = `
+                    <div style="display: grid; grid-template-columns: 100px 1fr 80px; gap: 15px; align-items: center;">
+                        <div style="font-size: 13px; font-weight: 600; color: #333;">${classLabels[i]}</div>
+                        <div style="background: #e0e0e0; height: 24px; border-radius: 4px; overflow: hidden; position: relative;">
+                            <div style="background: ${colors[i]}; height: 100%; width: ${percent}%; transition: width 0.3s ease; ${isMaxProb ? 'box-shadow: 0 0 8px ' + colors[i] + '80;' : ''}"></div>
+                        </div>
+                        <div style="text-align: right; font-size: 13px; font-weight: 600; color: ${colors[i]};">${percent}%</div>
                     </div>
-                    <div style="text-align: right; font-size: 13px; font-weight: 600; color: ${colors[i]};">${percent}%</div>
-                </div>
-            `;
+                `;
 
-            probBarsContainer.innerHTML += barHtml;
+                probBarsContainer.innerHTML += barHtml;
+            }
         }
 
-        document.getElementById('prediction-result').style.display = 'block';
+        const predictionResultEl = document.getElementById('prediction-result');
+        if (predictionResultEl) {
+            predictionResultEl.style.display = 'block';
+        }
     }
 
     function showPredictionError(message) {
-        document.getElementById('error-message').textContent = message;
-        document.getElementById('prediction-error').style.display = 'block';
+        const errorMessageEl = document.getElementById('error-message');
+        const predictionErrorEl = document.getElementById('prediction-error');
+        
+        if (errorMessageEl) errorMessageEl.textContent = message;
+        if (predictionErrorEl) predictionErrorEl.style.display = 'block';
     }</script>
 
 <?php $__env->stopSection(); ?>

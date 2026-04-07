@@ -68,45 +68,6 @@ except:
     _STEMMER = None
 
 
-def generate_confusion_matrix_image(cm, classes, title="Confusion Matrix"):
-    """Generate confusion matrix heatmap as base64 image"""
-    try:
-        import io
-        import base64
-        
-        # Create figure
-        fig, ax = plt.subplots(figsize=(8, 6), dpi=100)
-        
-        # Create heatmap
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
-                    xticklabels=classes, yticklabels=classes,
-                    cbar_kws={'label': 'Count'},
-                    ax=ax, square=True, linewidths=0.5, linecolor='white')
-        
-        ax.set_xlabel('Predicted', fontsize=12, fontweight='bold')
-        ax.set_ylabel('Actual', fontsize=12, fontweight='bold')
-        ax.set_title(title, fontsize=14, fontweight='bold', pad=20)
-        
-        # Convert to base64
-        buffer = io.BytesIO()
-        plt.savefig(buffer, format='png', bbox_inches='tight', dpi=100)
-        buffer.seek(0)
-        image_base64 = base64.b64encode(buffer.read()).decode('utf-8')
-        buffer.close()
-        plt.close(fig)
-        
-        return {
-            'success': True,
-            'image': image_base64,
-            'format': 'png'
-        }
-    except Exception as e:
-        return {
-            'success': False,
-            'error': str(e)
-        }
-
-
 def load_kamus_normalisasi():
     """Load normalization dictionary"""
     kamus = {}
@@ -363,41 +324,21 @@ def train_svm_exact(kernel='rbf', test_size=10):
     except Exception as e:
         print(f"⚠ Error in wordcloud generation: {str(e)}", file=sys.stderr, flush=True)
     
-    # Generate Confusion Matrix Heatmap
-    print("\n[10] GENERATING CONFUSION MATRIX HEATMAP...", file=sys.stderr, flush=True)
+    # Confusion Matrix - send as plain array (frontend will render)
     cm_image = None
-    try:
-        cm_result = generate_confusion_matrix_image(
-            cm, 
-            sorted(svm.classes_),
-            title=f"Confusion Matrix - SVM ({kernel} kernel)"
-        )
-        
-        if cm_result['success']:
-            # Save base64 image to file
-            with open(os.path.join(model_dir, 'confusion_matrix.b64'), 'w') as f:
-                f.write(cm_result['image'])
-            cm_image = cm_result['image']
-            print("✓ Confusion matrix heatmap generated successfully", file=sys.stderr, flush=True)
-        else:
-            print(f"⚠ Confusion matrix generation failed: {cm_result['error']}", file=sys.stderr, flush=True)
-            
-    except Exception as e:
-        print(f"⚠ Error in confusion matrix generation: {str(e)}", file=sys.stderr, flush=True)
     
     # Save metrics to model_metrics.json
-    print("\n[11] SAVING MODEL METRICS...", file=sys.stderr, flush=True)
+    print("\n[10] SAVING MODEL METRICS...", file=sys.stderr, flush=True)
     try:
         metrics_data = {
             'kernel': kernel,
             'timestamp': datetime.now().isoformat(),
             'evaluation': {
                 'accuracy': float(accuracy),
-                'precision_weighted': float(precision),
-                'recall_weighted': float(recall),
-                'f1_weighted': float(f1),
+                'precision': float(precision),
+                'recall': float(recall),
+                'f1_score': float(f1),
                 'confusion_matrix': cm.tolist(),
-                'confusion_matrix_image': cm_image,
                 'per_class_metrics': per_class,
                 'classes': sorted(svm.classes_.tolist())
             },
@@ -432,13 +373,21 @@ def train_svm_exact(kernel='rbf', test_size=10):
             'classes': sorted(svm.classes_.tolist()),
             'timestamp': datetime.now().isoformat()
         },
+        'evaluation': {
+            'accuracy': float(accuracy),
+            'precision': float(precision),
+            'recall': float(recall),
+            'f1_score': float(f1),
+            'confusion_matrix': cm.tolist(),
+            'per_class_metrics': per_class,
+            'classes': sorted(svm.classes_.tolist())
+        },
         'evaluation_result': {
             'accuracy': float(accuracy),
-            'precision_weighted': float(precision),
-            'recall_weighted': float(recall),
-            'f1_weighted': float(f1),
+            'precision': float(precision),
+            'recall': float(recall),
+            'f1_score': float(f1),
             'confusion_matrix': cm.tolist(),
-            'confusion_matrix_image': cm_image,
             'per_class_metrics': per_class,
             'classes': sorted(svm.classes_.tolist())
         },

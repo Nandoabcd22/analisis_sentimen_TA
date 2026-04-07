@@ -221,7 +221,7 @@ class ClassificationController extends Controller
                 throw new Exception('Python tidak ditemukan');
             }
 
-            // Use EXACT COLAB training script for reproducibility
+            // Use EXACT COLAB training script for reproducibility and exact results match
             $scriptPath = base_path('scripts/train_model_colab_exact.py');
             if (!file_exists($scriptPath)) {
                 throw new Exception('Training script tidak ditemukan');
@@ -339,8 +339,15 @@ class ClassificationController extends Controller
                 throw new Exception($result['error'] ?? 'Training gagal - ' . json_encode($result));
             }
 
-            $eval = $result['evaluation_result'] ?? [];
+            $eval = $result['evaluation'] ?? $result['evaluation_result'] ?? [];
             $data = $result['data'] ?? [];
+            
+            // DEBUG: Log what we got from Python
+            Log::info('Python result received', [
+                'eval_keys' => array_keys($eval),
+                'eval_content' => $eval,
+                'data_keys' => array_keys($data)
+            ]);
 
             Log::info('Model training completed successfully', [
                 'kernel' => $validated['kernel'],
@@ -355,18 +362,18 @@ class ClassificationController extends Controller
                     'test_size' => (int)$validated['test_size'],
                     'from_cache' => $result['from_cache'] ?? false,
                     'accuracy' => floatval($eval['accuracy'] ?? 0),
-                    'precision' => floatval($eval['precision_weighted'] ?? 0),
-                    'recall' => floatval($eval['recall_weighted'] ?? 0),
-                    'f1_score' => floatval($eval['f1_weighted'] ?? 0),
+                    'precision' => floatval($eval['precision'] ?? 0),
+                    'recall' => floatval($eval['recall'] ?? 0),
+                    'f1_score' => floatval($eval['f1_score'] ?? 0),
                     'per_class_metrics' => $eval['per_class_metrics'] ?? [],
                     'confusion_matrix' => $eval['confusion_matrix'] ?? [],
                     'confusion_matrix_image' => $eval['confusion_matrix_image'] ?? null,
+                    'wordcloud' => $eval['wordcloud_image'] ?? null,
                     'classes' => $eval['classes'] ?? [],
                     'total_samples' => $data['total_samples'] ?? 0,
                     'train_samples' => $data['train_samples'] ?? 0,
                     'test_samples' => $data['test_samples'] ?? 0,
-                    'features' => $data['features'] ?? 0,
-                    'wordcloud' => $data['wordcloud'] ?? null
+                    'features' => $data['features'] ?? 0
                 ]
             ]);
 
