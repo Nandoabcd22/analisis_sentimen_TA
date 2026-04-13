@@ -26,7 +26,6 @@
                 <option value="9:1" selected>90% Training | 10% Testing (Recommended)</option>
                 <option value="8:2">80% Training | 20% Testing</option>
                 <option value="7:3">70% Training | 30% Testing</option>
-                <option value="6:4">60% Training | 40% Testing</option>
                 <option value="5:5">50% Training | 50% Testing</option>
             </select>
             <p style="font-size: 12px; color: #999; margin-top: 8px;">Pilih rasio pembagian data untuk training dan testing</p>
