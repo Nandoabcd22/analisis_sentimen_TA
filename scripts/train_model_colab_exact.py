@@ -344,8 +344,54 @@ def train_svm_exact(kernel='rbf', test_size=10):
     print("\nPer-class metrics:", file=sys.stderr, flush=True)
     print(classification_report(y_test, y_pred), file=sys.stderr, flush=True)
     
-    # STEP 8: Save artifacts
-    print("\n[8] SAVING MODEL ARTIFACTS...", file=sys.stderr, flush=True)
+    # STEP 8: Dataset Labeling Results
+    print("\n[8] GENERATING DATASET LABELING RESULTS...", file=sys.stderr, flush=True)
+    try:
+        # Predict on full dataset
+        X_full_tfidf = tfidf.transform(X)
+        y_full_pred = svm.predict(X_full_tfidf)
+        y_full_proba = svm.predict_proba(X_full_tfidf)
+        
+        # Calculate label distribution
+        label_distribution = {}
+        unique_labels = sorted(svm.classes_)
+        for label in unique_labels:
+            count = sum(1 for pred in y_full_pred if pred == label)
+            label_distribution[label] = int(count)
+        
+        print(f"Label distribution: {label_distribution}", file=sys.stderr, flush=True)
+        
+        # Get top 20 labeled samples with highest confidence
+        labeled_samples = []
+        
+        # Calculate confidence as max probability for each sample
+        confidences = np.max(y_full_proba, axis=1)
+        
+        # Create list of (index, prediction, confidence)
+        sample_info = [(i, y_full_pred[i], confidences[i]) for i in range(len(y_full_pred))]
+        
+        # Sort by confidence (descending) and take top 20
+        sample_info_sorted = sorted(sample_info, key=lambda x: x[2], reverse=True)[:20]
+        
+        # Build labeled samples with text
+        for idx, pred, conf in sample_info_sorted:
+            original_text = X[idx] if idx < len(X) else ""
+            
+            labeled_samples.append({
+                'text': original_text,
+                'label': pred,
+                'confidence': float(conf)
+            })
+        
+        print(f"✓ Generated {len(labeled_samples)} top labeled samples", file=sys.stderr, flush=True)
+        
+    except Exception as e:
+        print(f"⚠ Error in labeling: {str(e)}", file=sys.stderr, flush=True)
+        label_distribution = {label: 0 for label in sorted(svm.classes_)}
+        labeled_samples = []
+    
+    # STEP 9: Save artifacts
+    print("\n[9] SAVING MODEL ARTIFACTS...", file=sys.stderr, flush=True)
     model_dir = os.path.join(os.path.dirname(__file__), '..', 'storage', 'app', 'private')
     os.makedirs(model_dir, exist_ok=True)
     
@@ -364,7 +410,7 @@ def train_svm_exact(kernel='rbf', test_size=10):
     print("✓ Model artifacts saved (SVM + TF-IDF)", file=sys.stderr, flush=True)
     
     # Generate Wordcloud
-    print("\n[9] GENERATING WORDCLOUD...", file=sys.stderr, flush=True)
+    print("\n[10] GENERATING WORDCLOUD...", file=sys.stderr, flush=True)
     try:
         from wordcloud_generator import generate_wordcloud_image
         from ast import literal_eval
@@ -392,7 +438,7 @@ def train_svm_exact(kernel='rbf', test_size=10):
     cm_image = None
     
     # Save metrics to model_metrics.json
-    print("\n[10] SAVING MODEL METRICS...", file=sys.stderr, flush=True)
+    print("\n[11] SAVING MODEL METRICS...", file=sys.stderr, flush=True)
     try:
         metrics_data = {
             'kernel': kernel,
@@ -455,7 +501,9 @@ def train_svm_exact(kernel='rbf', test_size=10):
             'f1_score': float(f1),
             'confusion_matrix': cm.tolist(),
             'per_class_metrics': per_class,
-            'classes': sorted(svm.classes_.tolist())
+            'classes': sorted(svm.classes_.tolist()),
+            'label_distribution': label_distribution,
+            'labeled_samples': labeled_samples
         },
         'evaluation_result': {
             'accuracy': float(accuracy),
@@ -464,7 +512,9 @@ def train_svm_exact(kernel='rbf', test_size=10):
             'f1_score': float(f1),
             'confusion_matrix': cm.tolist(),
             'per_class_metrics': per_class,
-            'classes': sorted(svm.classes_.tolist())
+            'classes': sorted(svm.classes_.tolist()),
+            'label_distribution': label_distribution,
+            'labeled_samples': labeled_samples
         },
         'model_config': {
             'kernel': kernel,

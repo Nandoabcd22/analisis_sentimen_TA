@@ -25,6 +25,7 @@
             font-family: 'Inter', sans-serif;
             background-color: #f8f9fa;
             color: #1a1a1a;
+            padding-top: 70px;
         }
         
         .navbar {
@@ -35,6 +36,12 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            width: 100%;
         }
         
         .navbar-brand {
@@ -141,7 +148,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: calc(100vh - 70px);
+            min-height: 100vh;
             padding: 60px 20px;
         }
         

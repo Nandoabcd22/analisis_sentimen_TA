@@ -205,6 +205,47 @@
             </div>
         </div>
 
+        <!-- Dataset Labeling Results Section -->
+        <div class="section-card">
+            <h2 class="section-title">📌 Hasil Lebeling Dataset</h2>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+                <!-- Label Distribution -->
+                <div>
+                    <h3 style="font-size: 16px; font-weight: 600; color: #333; margin: 0 0 15px 0;">Distribusi Label</h3>
+                    <div id="label-distribution-container" style="display: flex; justify-content: center; align-items: center; padding: 30px; background: #f9f9f9; border-radius: 6px; min-height: 300px;">
+                        <div style="text-align: center; color: #999;">
+                            <p style="font-size: 13px;">📊 Distribusi label akan ditampilkan setelah training selesai</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Statistics -->
+                <div>
+                    <h3 style="font-size: 16px; font-weight: 600; color: #333; margin: 0 0 15px 0;">Statistik Lebeling</h3>
+                    <div style="display: grid; gap: 12px;">
+                        <div style="background: #f9f9f9; padding: 15px; border-radius: 6px; border-left: 4px solid #f44336;">
+                            <div style="font-size: 12px; color: #666; font-weight: 600; margin-bottom: 5px;">😢 Negatif</div>
+                            <div style="font-size: 20px; font-weight: 700; color: #f44336;" id="stat-negative">0</div>
+                            <div style="font-size: 11px; color: #999; margin-top: 5px;" id="stat-negative-percent">0%</div>
+                        </div>
+                        <div style="background: #f9f9f9; padding: 15px; border-radius: 6px; border-left: 4px solid #FF9800;">
+                            <div style="font-size: 12px; color: #666; font-weight: 600; margin-bottom: 5px;">😐 Netral</div>
+                            <div style="font-size: 20px; font-weight: 700; color: #FF9800;" id="stat-neutral">0</div>
+                            <div style="font-size: 11px; color: #999; margin-top: 5px;" id="stat-neutral-percent">0%</div>
+                        </div>
+                        <div style="background: #f9f9f9; padding: 15px; border-radius: 6px; border-left: 4px solid #4CAF50;">
+                            <div style="font-size: 12px; color: #666; font-weight: 600; margin-bottom: 5px;">😊 Positif</div>
+                            <div style="font-size: 20px; font-weight: 700; color: #4CAF50;" id="stat-positive">0</div>
+                            <div style="font-size: 11px; color: #999; margin-top: 5px;" id="stat-positive-percent">0%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+        </div>
+
         <!-- Sentiment Prediction Section -->
         <div class="section-card">
             <h2 class="section-title">🔮 Prediksi Sentimen</h2>
@@ -857,6 +898,9 @@
         console.log('recall:', data.recall);
         console.log('f1_score:', data.f1_score);
         
+        // Display labeling results
+        displayLabelingResults(data);
+        
         // Config
         const resultKernelEl = document.getElementById('result-kernel');
         const resultTotalEl = document.getElementById('result-total');
@@ -1237,6 +1281,120 @@
         
         if (errorMessageEl) errorMessageEl.textContent = message;
         if (predictionErrorEl) predictionErrorEl.style.display = 'block';
+    }
+
+    // Display Dataset Labeling Results
+    function displayLabelingResults(data) {
+        try {
+            // Get labeling data from response
+            const labelDistribution = data.label_distribution || { 'Negatif': 0, 'Netral': 0, 'Positif': 0 };
+            const labeledSamples = data.labeled_samples || [];
+
+            console.log('Label Distribution:', labelDistribution);
+            console.log('Labeled Samples:', labeledSamples);
+
+            // Display distribution pie chart
+            displayLabelDistribution(labelDistribution);
+
+            // Display statistics
+            displayLabelStatistics(labelDistribution);
+
+        } catch (error) {
+            console.error('Error displaying labeling results:', error);
+        }
+    }
+
+    function displayLabelDistribution(distribution) {
+        const container = document.getElementById('label-distribution-container');
+        if (!container) return;
+
+        const total = Object.values(distribution).reduce((a, b) => a + b, 0);
+        const labels = Object.keys(distribution);
+        const values = Object.values(distribution);
+        const colors = ['#f44336', '#FF9800', '#4CAF50'];
+        const emojis = ['😢', '😐', '😊'];
+
+        // Create pie chart SVG
+        let svg = '<svg viewBox="0 0 400 300" style="width: 100%; height: 300px;">';
+        
+        // Draw pie slices
+        let currentAngle = -90;
+        const centerX = 150;
+        const centerY = 150;
+        const radius = 80;
+
+        for (let i = 0; i < values.length; i++) {
+            const sliceAngle = (values[i] / total) * 360;
+            const startAngle = currentAngle;
+            const endAngle = currentAngle + sliceAngle;
+
+            const startRad = (startAngle * Math.PI) / 180;
+            const endRad = (endAngle * Math.PI) / 180;
+
+            const x1 = centerX + radius * Math.cos(startRad);
+            const y1 = centerY + radius * Math.sin(startRad);
+            const x2 = centerX + radius * Math.cos(endRad);
+            const y2 = centerY + radius * Math.sin(endRad);
+
+            const largeArc = sliceAngle > 180 ? 1 : 0;
+            const pathData = `M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+
+            svg += `<path d="${pathData}" fill="${colors[i]}" stroke="white" stroke-width="2" opacity="0.8"/>`;
+
+            // Draw percentage label
+            const labelAngle = startAngle + sliceAngle / 2;
+            const labelRad = (labelAngle * Math.PI) / 180;
+            const labelX = centerX + (radius * 0.65) * Math.cos(labelRad);
+            const labelY = centerY + (radius * 0.65) * Math.sin(labelRad);
+            const percentage = ((values[i] / total) * 100).toFixed(1);
+
+            svg += `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="bold" fill="white">${percentage}%</text>`;
+
+            currentAngle = endAngle;
+        }
+
+        // Draw center circle for donut effect
+        svg += `<circle cx="${centerX}" cy="${centerY}" r="40" fill="white" stroke="none"/>`;
+        svg += `<text x="${centerX}" y="${centerY}" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="bold" fill="#333">${total}</text>`;
+        svg += `<text x="${centerX}" y="${centerY + 18}" text-anchor="middle" font-size="11" fill="#999">Total</text>`;
+
+        svg += '</svg>';
+
+        // Create legend
+        let legend = '<div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-top: 20px;">';
+        for (let i = 0; i < labels.length; i++) {
+            legend += `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 16px; height: 16px; background: ${colors[i]}; border-radius: 3px;"></div>
+                    <span style="font-size: 12px; color: #333;">${emojis[i]} ${labels[i]}</span>
+                </div>
+            `;
+        }
+        legend += '</div>';
+
+        container.innerHTML = svg + legend;
+    }
+
+    function displayLabelStatistics(distribution) {
+        const total = Object.values(distribution).reduce((a, b) => a + b, 0);
+        
+        // Map labels to elements
+        const labelMap = {
+            'Negatif': { el: 'stat-negative', percent: 'stat-negative-percent' },
+            'Netral': { el: 'stat-neutral', percent: 'stat-neutral-percent' },
+            'Positif': { el: 'stat-positive', percent: 'stat-positive-percent' }
+        };
+
+        for (const [label, value] of Object.entries(distribution)) {
+            const mapping = labelMap[label];
+            if (mapping) {
+                const countEl = document.getElementById(mapping.el);
+                const percentEl = document.getElementById(mapping.percent);
+                
+                if (countEl) countEl.textContent = value.toLocaleString();
+                if (percentEl) percentEl.textContent = ((value / total) * 100).toFixed(2) + '%';
+            }
+        }
     }</script>
 
 @endsection

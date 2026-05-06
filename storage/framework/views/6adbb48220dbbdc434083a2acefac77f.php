@@ -23,71 +23,6 @@
         </div>
     </div>
 
-    <!-- Data Overview Section -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
-        <div class="section-card">
-            <div class="section-header">
-                <h3 class="section-title">Data Overview</h3>
-            </div>
-            <div id="data-overview">
-                <div class="space-y-3">
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-600">Total Data:</span>
-                        <span class="font-semibold" id="total-data">-</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-600">Positif:</span>
-                        <span class="font-semibold text-green-600" id="positif-count">-</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-600">Negatif:</span>
-                        <span class="font-semibold text-red-600" id="negatif-count">-</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-600">Netral:</span>
-                        <span class="font-semibold text-yellow-600" id="netral-count">-</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="section-card">
-            <div class="section-header">
-                <h3 class="section-title">Data Split</h3>
-            </div>
-            <div class="space-y-4">
-                <div>
-                    <p class="text-sm text-gray-600 mb-3">Fixed Data Split Ratio:</p>
-                    <p class="text-sm font-semibold text-gray-700">Training: <span class="text-blue-600">90%</span> | Testing: <span class="text-orange-600">10%</span></p>
-                </div>
-                <div class="space-y-2">
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-600">Training:</span>
-                        <span class="font-semibold" id="train-count">-</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-600">Testing:</span>
-                        <span class="font-semibold" id="test-count">-</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="section-card">
-            <div class="section-header">
-                <h3 class="section-title">SMOTE Status</h3>
-            </div>
-            <div id="smote-status">
-                <div class="text-center py-4">
-                    <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    </div>
-                    <p class="text-gray-500 text-sm">SMOTE not applied yet</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- TF-IDF Results Section -->
     <div class="section-card">
         <div class="section-header">
@@ -105,7 +40,6 @@
                     <tr>
                         <th>No</th>
                         <th>Feature</th>
-                        <th>Category</th>
                         <th title="Term Frequency (normalized)">TF</th>
                         <th title="Inverse Document Frequency">IDF</th>
                         <th title="TF × IDF Score">TF-IDF</th>
@@ -129,27 +63,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Data Distribution Chart -->
-    <div class="section-card">
-        <div class="section-header">
-            <h2 class="section-title">Data Distribution</h2>
-        </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-                <h3 class="text-lg font-semibold mb-4">Original Distribution</h3>
-                <div id="original-chart" class="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-                    <canvas id="originalCanvas"></canvas>
-                </div>
-            </div>
-            <div>
-                <h3 class="text-lg font-semibold mb-4">After SMOTE Distribution</h3>
-                <div id="smote-chart" class="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-                    <canvas id="smoteCanvas"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -168,10 +81,15 @@ async function loadDataOverview() {
         
         if (result.success) {
             const data = result.data;
-            document.getElementById('total-data').textContent = data.total || 0;
-            document.getElementById('positif-count').textContent = data.positif || 0;
-            document.getElementById('negatif-count').textContent = data.negatif || 0;
-            document.getElementById('netral-count').textContent = data.netral || 0;
+            const totalDataEl = document.getElementById('total-data');
+            const positifCountEl = document.getElementById('positif-count');
+            const negatifCountEl = document.getElementById('negatif-count');
+            const netralCountEl = document.getElementById('netral-count');
+
+            if (totalDataEl) totalDataEl.textContent = data.total || 0;
+            if (positifCountEl) positifCountEl.textContent = data.positif || 0;
+            if (negatifCountEl) negatifCountEl.textContent = data.negatif || 0;
+            if (netralCountEl) netralCountEl.textContent = data.netral || 0;
             
             // Save original distribution if not already saved
             if (!originalDistribution) {
@@ -193,18 +111,29 @@ async function loadDataOverview() {
 // Update data split based on fixed 90:10 ratio
 function updateDataSplit() {
     const trainSize = 90;  // Fixed: 90% training
-    const total = parseInt(document.getElementById('total-data').textContent) || 0;
-    
+    const totalDataEl = document.getElementById('total-data');
+    const trainCountEl = document.getElementById('train-count');
+    const testCountEl = document.getElementById('test-count');
+
+    if (!totalDataEl || !trainCountEl || !testCountEl) {
+        return;
+    }
+
+    const total = parseInt(totalDataEl.textContent) || 0;
     const trainCount = Math.floor(total * trainSize / 100);
     const testCount = total - trainCount;
     
-    document.getElementById('train-count').textContent = trainCount;
-    document.getElementById('test-count').textContent = testCount;
+    trainCountEl.textContent = trainCount;
+    testCountEl.textContent = testCount;
 }
 
 // Draw original distribution chart
 function drawOriginalChart(data) {
-    const ctx = document.getElementById('originalCanvas').getContext('2d');
+    const canvas = document.getElementById('originalCanvas');
+    if (!canvas) {
+        return;
+    }
+    const ctx = canvas.getContext('2d');
     new Chart(ctx, {
         type: 'bar',
         data: {
@@ -307,6 +236,9 @@ document.getElementById('apply-smote-btn').addEventListener('click', async funct
 // Update SMOTE status
 function updateSmoteStatus(data) {
     const statusDiv = document.getElementById('smote-status');
+    if (!statusDiv) {
+        return;
+    }
     const totalAfter = data.total_samples?.total || (data.original_total + data.synthetic_generated);
     const syntheticCount = data.synthetic_generated || data.total_samples?.synthetic || 0;
     
@@ -353,7 +285,11 @@ function updateSmoteStatus(data) {
 
 // Draw SMOTE chart
 function drawSmoteChart(data) {
-    const ctx = document.getElementById('smoteCanvas').getContext('2d');
+    const canvas = document.getElementById('smoteCanvas');
+    if (!canvas) {
+        return;
+    }
+    const ctx = canvas.getContext('2d');
     
     // Get distribution from new_distribution or fallback to old format
     const distribution = data.new_distribution || {
@@ -429,7 +365,7 @@ function renderTfidfTable(data) {
     tbody.innerHTML = '';
 
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-gray-500">No TF-IDF data available. Please process TF-IDF first.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-8 text-gray-500">No TF-IDF data available. Please process TF-IDF first.</td></tr>';
         return;
     }
 
@@ -438,9 +374,6 @@ function renderTfidfTable(data) {
         row.innerHTML = `
             <td>${(currentPage - 1) * entriesPerPage + index + 1}</td>
             <td class="max-w-xs truncate" title="${item.feature}">${item.feature}</td>
-            <td class="text-center">
-                <span class="label-badge ${item.category ? item.category.toLowerCase() : 'netral'}">${item.category || '-'}</span>
-            </td>
             <td class="text-center">${item.tf ? item.tf.toFixed(6) : '-'}</td>
             <td class="text-center">${item.idf ? item.idf.toFixed(6) : '-'}</td>
             <td class="text-center font-semibold text-blue-600">${item.tfidf_score ? item.tfidf_score.toFixed(6) : '-'}</td>

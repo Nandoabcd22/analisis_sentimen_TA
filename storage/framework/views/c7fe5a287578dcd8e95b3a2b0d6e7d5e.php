@@ -29,55 +29,10 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-            <div class="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-l-4 border-blue-600">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center group-hover:bg-blue-600 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
-                    </div>
-                    <span class="text-xs font-semibold uppercase text-blue-600">Total</span>
-                </div>
-                <div class="text-3xl font-bold text-gray-900 mb-1"><?php echo e($total ?? 0); ?></div>
-                <div class="text-xs text-gray-500">Review dianalisis</div>
-            </div>
-
-            <div class="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-l-4 border-emerald-500">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center group-hover:bg-emerald-600 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-emerald-600 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"/></svg>
-                    </div>
-                    <span class="text-xs font-semibold uppercase text-emerald-600">Positif</span>
-                </div>
-                <div class="text-3xl font-bold text-emerald-600 mb-1"><?php echo e($positif ?? 0); ?></div>
-                <div class="text-xs text-gray-500">Sentimen baik</div>
-            </div>
-
-            <div class="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-l-4 border-orange-500">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center group-hover:bg-orange-600 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-600 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    </div>
-                    <span class="text-xs font-semibold uppercase text-orange-500">Negatif</span>
-                </div>
-                <div class="text-3xl font-bold text-orange-600 mb-1"><?php echo e($negatif ?? 0); ?></div>
-                <div class="text-xs text-gray-500">Sentimen buruk</div>
-            </div>
-
-            <div class="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-l-4 border-gray-500">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center group-hover:bg-gray-600 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    </div>
-                    <span class="text-xs font-semibold uppercase text-gray-600">Netral</span>
-                </div>
-                <div class="text-3xl font-bold text-gray-700 mb-1"><?php echo e($netral ?? 0); ?></div>
-                <div class="text-xs text-gray-500">Sentimen netral</div>
-            </div>
-        </div>
-
         <div class="bg-white rounded-3xl shadow-xl p-8 mt-8">
+
             <div class="flex items-center justify-between mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">Ulasan & Label Sentimen</h2>
+                <h2 class="text-2xl font-bold text-gray-800">Ulasan</h2>
             </div>
             
             <!-- Empty State -->
@@ -86,7 +41,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 <h3 class="mt-2 text-sm font-medium text-gray-900">Belum ada data</h3>
-                <p class="mt-1 text-sm text-gray-500">Silakan upload file CSV terlebih dahulu untuk melihat data ulasan dan sentimen.</p>
+                <p class="mt-1 text-sm text-gray-500">Silakan upload file CSV terlebih dahulu untuk melihat data ulasan.</p>
             </div>
             
             <!-- Table Section (Hidden Initially) -->
@@ -115,7 +70,6 @@
                             <tr class="border-b border-gray-300">
                                 <th class="text-left py-3 px-4 font-semibold text-gray-700 border border-gray-300">No.</th>
                                 <th class="text-left py-3 px-4 font-semibold text-gray-700 border border-gray-300">Ulasan</th>
-                                <th class="text-center py-3 px-4 font-semibold text-gray-700 border border-gray-300">Label</th>
                             </tr>
                         </thead>
                         <tbody id="tableBody">
@@ -151,8 +105,6 @@
 <script>
 let currentPage = 1;
 let entriesPerPage = 10;
-let allReviews = [];
-let filteredReviews = [];
 
 function updateFileName(input) {
     const fileName = input.files[0]?.name || 'No file chosen';
@@ -165,11 +117,8 @@ function showTableSection() {
 }
 
 function updateStatistics(data) {
-    // Update statistics cards
+    // Update statistics card
     document.querySelector('.border-l-4.border-blue-600 .text-3xl').textContent = data.total || 0;
-    document.querySelector('.border-l-4.border-emerald-500 .text-3xl').textContent = data.positif || 0;
-    document.querySelector('.border-l-4.border-orange-500 .text-3xl').textContent = data.negatif || 0;
-    document.querySelector('.border-l-4.border-gray-500 .text-3xl').textContent = data.netral || 0;
 }
 
 // Load overall statistics from backend (covers all pages)
@@ -193,31 +142,17 @@ async function loadReviews() {
         const response = await fetch(`/get-reviews?page=${currentPage}&per_page=${entriesPerPage}&search=${encodeURIComponent(searchValue)}`);
         const result = await response.json();
         
-        console.log('API Response:', result);
-        
         if (result.success && result.data && result.pagination) {
-            // Show table section if we have data
             if (Array.isArray(result.data) && result.data.length > 0) {
-                console.log('Data is valid array with', result.data.length, 'items');
                 showTableSection();
                 renderTable(result.data);
                 updatePaginationInfo(result.pagination);
                 updatePaginationControls(result.pagination);
-                
-                // Refresh overall statistics from backend
                 loadStatistics();
             } else {
-                console.log('No data or not an array. Data type:', typeof result.data, 'Length:', result.data?.length);
-                // Hide table if no data
                 document.getElementById('emptyState').classList.remove('hidden');
                 document.getElementById('tableSection').classList.add('hidden');
             }
-        } else {
-            console.log('Invalid response structure. Missing:', {
-                success: !result.success,
-                data: !result.data,
-                pagination: !result.pagination
-            });
         }
     } catch (error) {
         console.error('Error loading reviews:', error);
@@ -228,33 +163,15 @@ function renderTable(reviews) {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
     
-    console.log('Rendering reviews:', reviews);
-    
     reviews.forEach((review, index) => {
         const row = document.createElement('tr');
         row.className = 'border-b border-gray-200';
         
-        // Debug log untuk melihat struktur data
-        console.log('Review object:', review);
-        
         const reviewText = review?.review || review?.text || review?.comment || 'No text';
-        const reviewLabel = review?.label || review?.sentiment || 'Netral';
-        
-        const labelClass = reviewLabel === 'Positif' ? 'bg-green-50 text-green-700' : 
-                           reviewLabel === 'Negatif' ? 'bg-red-50 text-red-700' : 
-                           'bg-gray-50 text-gray-700';
-        const dotClass = reviewLabel === 'Positif' ? 'bg-green-500' : 
-                        reviewLabel === 'Negatif' ? 'bg-red-500' : 
-                        'bg-gray-500';
         
         row.innerHTML = `
             <td class="py-3 px-4 text-center border border-gray-300">${(currentPage - 1) * entriesPerPage + index + 1}</td>
             <td class="py-3 px-4 border border-gray-300">${reviewText}</td>
-            <td class="py-3 px-4 text-center border border-gray-300">
-                <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${labelClass}">
-                    <span class="w-1.5 h-1.5 ${dotClass} rounded-full"></span> ${reviewLabel}
-                </span>
-            </td>
         `;
         tbody.appendChild(row);
     });

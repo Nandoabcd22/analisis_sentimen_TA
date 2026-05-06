@@ -373,7 +373,9 @@ class ClassificationController extends Controller
                     'total_samples' => $data['total_samples'] ?? 0,
                     'train_samples' => $data['train_samples'] ?? 0,
                     'test_samples' => $data['test_samples'] ?? 0,
-                    'features' => $data['features'] ?? 0
+                    'features' => $data['features'] ?? 0,
+                    'label_distribution' => $eval['label_distribution'] ?? [],
+                    'labeled_samples' => $eval['labeled_samples'] ?? []
                 ]
             ]);
 

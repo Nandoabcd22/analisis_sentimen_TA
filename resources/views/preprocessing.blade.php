@@ -121,7 +121,6 @@
                                 <tr class="border-b-2 border-gray-300">
                                     <th class="text-left py-3 px-4 font-semibold text-gray-800 border border-gray-300 whitespace-nowrap bg-blue-50 min-w-12">No</th>
                                     <th class="text-left py-3 px-4 font-semibold text-gray-800 border border-gray-300 bg-blue-50 min-w-48">Review</th>
-                                    <th class="text-left py-3 px-4 font-semibold text-gray-800 border border-gray-300 whitespace-nowrap bg-blue-50 min-w-24">Label</th>
                                     <th class="text-left py-3 px-4 font-semibold text-gray-800 border border-gray-300 bg-blue-50 min-w-40">Case Folding</th>
                                     <th class="text-left py-3 px-4 font-semibold text-gray-800 border border-gray-300 bg-blue-50 min-w-36">Cleansing</th>
                                     <th class="text-left py-3 px-4 font-semibold text-gray-800 border border-gray-300 bg-blue-50 min-w-40">Normalisasi</th>
@@ -340,29 +339,9 @@ function renderTable(reviews, showAll = false) {
         // Jika menampilkan semua, gunakan index + 1, jika tidak gunakan pagination offset
         const rowNumber = showAll ? (index + 1) : ((currentPage - 1) * entriesPerPage + index + 1);
 
-        // Tentukan warna label berdasarkan nilai label
-        let labelColor = 'bg-gray-100 text-gray-700';
-        let labelDot = 'bg-gray-500';
-        
-        if (review.label === 'Positif') {
-            labelColor = 'bg-green-100 text-green-700';
-            labelDot = 'bg-green-500';
-        } else if (review.label === 'Negatif') {
-            labelColor = 'bg-red-100 text-red-700';
-            labelDot = 'bg-red-500';
-        } else if (review.label === 'Netral') {
-            labelColor = 'bg-blue-100 text-blue-700';
-            labelDot = 'bg-blue-500';
-        }
-
         row.innerHTML = `
             <td class="py-3 px-4 text-center border border-gray-300 whitespace-nowrap text-gray-600 font-medium">${rowNumber}</td>
             <td class="py-3 px-4 border border-gray-300 text-xs max-w-xs text-gray-700">${escapeHtml(review.review || '')}</td>
-            <td class="py-3 px-4 text-center border border-gray-300 whitespace-nowrap">
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${labelColor}">
-                    <span class="w-2 h-2 ${labelDot} rounded-full"></span> ${review.label || 'Belum Diproses'}
-                </span>
-            </td>
             <td class="py-3 px-4 border border-gray-300 text-xs max-w-xs text-gray-700">${escapeHtml(review.case_folding || '')}</td>
             <td class="py-3 px-4 border border-gray-300 text-xs max-w-xs text-gray-700">${escapeHtml(review.cleansing || '')}</td>
             <td class="py-3 px-4 border border-gray-300 text-xs max-w-xs text-gray-700">${escapeHtml(review.normalisasi || '')}</td>
